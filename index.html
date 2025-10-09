@@ -92,7 +92,7 @@
         }
 
         h1 {
-            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-size: clamp(1.8rem, 5vw, 4rem);
             font-weight: 700;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             background-clip: text;
@@ -101,15 +101,17 @@
             margin-bottom: 20px;
             position: relative;
             z-index: 2;
+            line-height: 1.2;
         }
 
         .tagline {
-            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            font-size: clamp(1rem, 3vw, 1.8rem);
             font-weight: 300;
             color: #e0e0ff;
             margin-bottom: 20px;
             opacity: 0;
             animation: fadeInUp 1s ease-out 0.5s forwards;
+            line-height: 1.4;
         }
 
         @keyframes fadeInUp {
@@ -131,16 +133,15 @@
         }
 
         .description p {
-            font-size: 1.3rem;
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
             line-height: 1.6;
             margin-bottom: 20px;
             color: #b8c5d6;
         }
 
-        /* UPDATED: Force 3 cards in one row on desktop */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* Force 3 columns */
+            grid-template-columns: repeat(3, 1fr);
             gap: 30px;
             margin-bottom: 60px;
             opacity: 0;
@@ -231,7 +232,6 @@
             margin-bottom: 30px;
         }
 
-        /* UPDATED: Email hover effect */
         .email-button {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -273,7 +273,6 @@
             transform: translateY(-1px);
         }
 
-        /* NEW: Email tooltip on hover */
         .email-tooltip {
             position: absolute;
             bottom: -40px;
@@ -302,7 +301,6 @@
             font-weight: 700;
         }
 
-        /* NEW: Eigent-specific callout */
         .eigent-callout {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
             border-left: 4px solid #667eea;
@@ -323,7 +321,6 @@
             flex-shrink: 0;
         }
 
-        /* Mobile responsiveness */
         @media (max-width: 1024px) {
             .features-grid {
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -341,11 +338,46 @@
 
             .hero-section {
                 margin-top: 40px;
+                margin-bottom: 40px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+                margin-bottom: 15px;
+            }
+
+            .tagline {
+                font-size: 1rem;
+                padding: 0 10px;
+            }
+
+            .description {
+                margin-bottom: 30px;
+            }
+
+            .description p {
+                font-size: 1rem;
+                margin-bottom: 15px;
             }
 
             .features-grid {
                 grid-template-columns: 1fr;
                 gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .feature-card {
+                padding: 25px 20px;
+                min-height: auto;
+            }
+
+            .feature-icon {
+                font-size: 2.5rem;
+                margin-bottom: 15px;
+            }
+
+            .feature-title {
+                font-size: 1.2rem;
             }
 
             .cta-section {
@@ -353,13 +385,66 @@
                 margin: 0 15px;
             }
 
-            .feature-card {
-                padding: 25px 15px;
-                min-height: auto;
+            .cta-title {
+                font-size: 1.5rem;
+            }
+
+            .cta-subtitle {
+                font-size: 1rem;
+            }
+
+            .email-button {
+                padding: 15px 30px;
+                font-size: 1rem;
+            }
+
+            .eigent-callout {
+                margin: 20px 0;
+                padding: 15px;
+            }
+
+            .eigent-callout p {
+                font-size: 1rem;
             }
 
             .bottom-margin {
                 height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-wrapper {
+                margin: 0 10px;
+            }
+
+            .container {
+                padding: 0 10px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .tagline {
+                font-size: 0.9rem;
+            }
+
+            .description p {
+                font-size: 0.95rem;
+            }
+
+            .cta-title {
+                font-size: 1.3rem;
+            }
+
+            .email-button {
+                padding: 12px 25px;
+                font-size: 0.95rem;
+            }
+
+            .email-tooltip {
+                font-size: 0.8rem;
+                padding: 6px 12px;
             }
         }
 
@@ -388,12 +473,10 @@
                 </div>
             </div>
 
-            
             <div class="description">
                 <p>This strategic digital asset represents the future of work - where AI agents collaborate, innovate and execute with unprecedented efficiency.</p>
                 <p>Perfect for visionary companies pioneering <span class="domain-highlight">multi-agent systems</span>, <span class="domain-highlight">autonomous AI teams</span> and the <span class="domain-highlight">virtual AI workforce</span> of tomorrow.</p>
             </div>
-
 
             <div class="features-grid">
                 <div class="feature-card">
@@ -413,13 +496,9 @@
                 </div>
             </div>
 
-            
-            
-            <!-- NEW: Multi-AI-Agent-Systems--specific callout -->
             <div class="eigent-callout">
-                <p>🎯 <strong>Own your category with the definitive brand name - ideal for platforms orchestrating multiple AI agents.</p>
+                <p>🎯 <strong>Own your category with the definitive brand name - ideal for platforms orchestrating multiple AI agents.</strong></p>
             </div>
-
 
             <div class="cta-section">
                 <div class="cta-title">Ready to Acquire This Premium Domain?</div>
@@ -427,7 +506,7 @@
                 <button class="email-button" onclick="openEmailClient()">
                     📧 Contact for Acquisition
                 </button>
-                <div class="email-tooltip">email: justinduveen@gmail.com</div>
+                <div class="email-tooltip">email: justin@virtualaiworkforce.com</div>
             </div>
         </div>
 
@@ -456,9 +535,9 @@
         }
 
         function openEmailClient() {
-            const subject = encodeURIComponent('VirtualAIWorkforce.com - Strategic Domain for Eigent.ai');
-            const body = encodeURIComponent(`Dear Guohao Li,\n\nI was impressed by Eigent.ai's work on the "world's first Multi-agent Workforce" and believe VirtualAIWorkforce.com is the perfect domain for your platform.\n\nThis domain directly communicates your value proposition and would establish Eigent.ai as the category leader.\n\nI'd love to discuss how this strategic asset can accelerate your growth.\n\nBest regards,\nJustin Duveen`);
-            const mailtoLink = `mailto:justinduveen@gmail.com?subject=${subject}&body=${body}`;
+            const subject = encodeURIComponent('VirtualAIWorkforce.com - Strategic Domain for Sale');
+            const body = encodeURIComponent(``);
+            const mailtoLink = `mailto:justin@virtualaiworkforce.com?subject=${subject}&body=${body}`;
             window.location.href = mailtoLink;
         }
 
