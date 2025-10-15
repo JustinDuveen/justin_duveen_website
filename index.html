@@ -320,7 +320,7 @@
 
         /* Manifesto Section - Updated for dark theme */
         .manifesto {
-            padding: 100px 0;
+            padding: 60px 0;
             background: #0f1116;
         }
 
@@ -574,7 +574,11 @@
             }
 
             .hero h1 {
-                font-size: 3rem;
+                font-size: 2.8rem;
+            }
+
+            .hero-brand {
+                font-size: 3.5rem;
             }
 
             .hero-image-wrapper {
@@ -585,44 +589,65 @@
 
         @media (max-width: 768px) {
             .hero {
-                padding: 60px 0 40px;
+                padding: 40px 0 30px;
                 min-height: auto;
             }
 
+            .hero::after {
+                height: 100px;
+            }
+
             .hero-content {
-                gap: 2rem;
+                gap: 2.5rem;
             }
 
             .hero-brand {
-                font-size: 2.5rem;
-                margin-bottom: 1.5rem;
+                font-size: 2.2rem;
+                margin-bottom: 1.25rem;
+                line-height: 1.2;
             }
 
             .hero h1 {
-                font-size: 2.2rem;
+                font-size: 1.85rem;
                 margin-bottom: 1rem;
+                line-height: 1.25;
             }
 
             .hero-subtitle {
-                font-size: 1.1rem;
-                margin-bottom: 1.5rem;
+                font-size: 1.05rem;
+                margin-bottom: 1.75rem;
+                line-height: 1.6;
+                padding: 0 10px;
             }
 
             .hero-image-wrapper {
                 max-width: 100%;
+                border-radius: 12px;
             }
 
             .hero-image-wrapper::before {
-                filter: blur(6px);
+                filter: blur(5px);
+                border-radius: 12px;
+            }
+
+            .hero-image-wrapper img {
+                border-radius: 12px;
             }
 
             .cta-button {
                 padding: 0.875rem 2rem;
                 font-size: 1rem;
+                width: 100%;
+                max-width: 320px;
+                text-align: center;
             }
-            
+
             .section-title {
                 font-size: 2rem;
+            }
+
+            .manifesto {
+                padding: 40px 0;
             }
 
             .final-cta .cta-button {
@@ -632,7 +657,9 @@
             }
 
             .slider-title {
-                font-size: 2rem;
+                font-size: 1.75rem;
+                padding: 0 20px;
+                line-height: 1.3;
             }
 
             .slider-item {
@@ -655,6 +682,66 @@
 
             .footer-text {
                 text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .hero {
+                padding: 30px 0 25px;
+            }
+
+            .hero-brand {
+                font-size: 1.75rem;
+                margin-bottom: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+
+            .hero-subtitle {
+                font-size: 0.95rem;
+                line-height: 1.5;
+                padding: 0 5px;
+            }
+
+            .cta-button {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.95rem;
+                width: 100%;
+                max-width: 280px;
+            }
+
+            .hero-image-wrapper {
+                border-radius: 10px;
+            }
+
+            .hero-image-wrapper::before {
+                border-radius: 10px;
+                filter: blur(4px);
+            }
+
+            .hero-image-wrapper img {
+                border-radius: 10px;
+            }
+
+            .hero::after {
+                height: 80px;
+            }
+
+            .manifesto {
+                padding: 30px 0;
+            }
+
+            .slider-title {
+                font-size: 1.4rem;
+                padding: 0 15px;
+                line-height: 1.35;
             }
         }
     </style>
