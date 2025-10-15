@@ -19,6 +19,16 @@
             --gray-800: #343a40;
             --dark-bg: #0b0b0f;
             --dark-header: #0f1116;
+
+            /* Image-matched color palette */
+            --deep-blue: #0a0e1f;
+            --midnight-blue: #151b2e;
+            --electric-blue: #00d4ff;
+            --bright-blue: #3eb8ff;
+            --sky-blue: #7dd3ff;
+            --glow-cyan: #00ffe0;
+            --pure-white: #ffffff;
+            --off-white: #e8f0f7;
         }
 
         body {
@@ -34,61 +44,27 @@
             padding: 0 20px;
         }
 
-        /* Header - Updated with solid dark theme */
-        header {
-            background: #0f1116;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid #1a2230;
-            box-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem 0;
-        }
-
-        /* Logo Styles */
-        .logo {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .logo-main {
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: white;
-            line-height: 1.1;
-        }
-
-        .logo-domain {
-            background: linear-gradient(90deg, #008cff, #00ffe0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 700;
-            margin-left: 4px;
-        }
-
-        .logo-sub {
-            font-size: 0.8rem;
-            color: #aaaaaa;
-            margin-top: 6px;
-            font-weight: 400;
-            letter-spacing: 0.5px;
-        }
-
-        /* Hero Section - Updated for dark theme */
+        /* Hero Section - Split layout with image integration */
         .hero {
-            background: linear-gradient(135deg, var(--dark-bg) 0%, #101824 40%, #1a2230 100%);
+            background: linear-gradient(135deg, var(--deep-blue) 0%, var(--midnight-blue) 50%, #1a2842 100%);
             color: var(--secondary);
-            padding: 160px 0 100px;
-            text-align: center;
+            padding: 60px 0 60px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
             position: relative;
             overflow: hidden;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at 70% 50%, rgba(0, 212, 255, 0.08) 0%, transparent 60%);
+            pointer-events: none;
         }
 
         .hero::after {
@@ -98,28 +74,112 @@
             left: 0;
             width: 100%;
             height: 180px;
-            background: linear-gradient(to top, rgba(11, 11, 15, 0.8), transparent);
+            background: linear-gradient(to top, rgba(11, 11, 15, 0.9), transparent);
             pointer-events: none;
+            z-index: 1;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            width: 100%;
+        }
+
+        .hero-text {
+            text-align: left;
+            padding-right: 2rem;
+        }
+
+        .hero-image-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-image-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 520px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow:
+                0 0 50px rgba(0, 212, 255, 0.3),
+                0 0 80px rgba(0, 255, 224, 0.2),
+                0 15px 50px rgba(0, 0, 0, 0.4);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .hero-image-wrapper::before {
+            content: "";
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--electric-blue), var(--glow-cyan), var(--bright-blue));
+            border-radius: 16px;
+            z-index: -1;
+            opacity: 0.6;
+            filter: blur(8px);
+        }
+
+        .hero-image-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 16px;
+            position: relative;
+        }
+
+        /* Ambient glow effect */
+        .hero-image-wrapper::after {
+            content: "";
+            position: absolute;
+            inset: -100px;
+            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -2;
+        }
+
+        .hero-brand {
+            font-size: 4.5rem;
+            font-weight: 700;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+        }
+
+        .hero-brand-domain {
+            background: linear-gradient(90deg, #008cff, #00ffe0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            margin-left: 6px;
         }
 
         .hero h1 {
-            font-size: 4rem;
+            font-size: 3.2rem;
             font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
         }
 
         .hero-subtitle {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             opacity: 0.9;
-            margin-bottom: 3rem;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-bottom: 2rem;
             color: #cfd8e3;
+            line-height: 1.5;
         }
 
         .cta-button {
@@ -408,8 +468,48 @@
             background: #0b0c0f;
             color: var(--secondary);
             padding: 3rem 0;
-            text-align: center;
             border-top: 1px solid #1a2230;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .footer-logo {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .footer-logo-main {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: white;
+            line-height: 1.1;
+        }
+
+        .footer-logo-domain {
+            background: linear-gradient(90deg, #008cff, #00ffe0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        .footer-logo-sub {
+            font-size: 0.8rem;
+            color: #aaaaaa;
+            margin-top: 6px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-text {
+            text-align: center;
+            flex: 1;
         }
 
         footer p {
@@ -417,27 +517,69 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
+        @media (max-width: 1024px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
             }
-            
+
+            .hero-text {
+                text-align: center;
+                padding-right: 0;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero-image-wrapper {
+                max-width: 500px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 60px 0 40px;
+                min-height: auto;
+            }
+
+            .hero-content {
+                gap: 2rem;
+            }
+
+            .hero-brand {
+                font-size: 2.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .hero h1 {
+                font-size: 2.2rem;
+                margin-bottom: 1rem;
+            }
+
             .hero-subtitle {
-                font-size: 1.2rem;
+                font-size: 1.1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .hero-image-wrapper {
+                max-width: 100%;
+            }
+
+            .hero-image-wrapper::before {
+                filter: blur(6px);
+            }
+
+            .cta-button {
+                padding: 0.875rem 2rem;
+                font-size: 1rem;
             }
             
             .section-title {
                 font-size: 2rem;
             }
-            
-            .logo-main {
-                font-size: 1.4rem;
-            }
-            
-            .logo-sub {
-                font-size: 0.7rem;
-            }
-            
+
             .final-cta .cta-button {
                 display: block;
                 margin: 1rem auto;
@@ -456,26 +598,38 @@
             .slider-container::after {
                 width: 50px;
             }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-logo {
+                text-align: center;
+            }
+
+            .footer-text {
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <div class="logo-main">Virtual<span class="logo-domain">AIWorkforce.com</span></div>
-                    <div class="logo-sub">The Enterprise AI Category Asset</div>
-                </div>
-            </div>
-        </div>
-    </header>
-
     <section class="hero">
         <div class="container">
-            <h1>The Category-Defining Asset for the $3T Enterprise AI Revolution</h1>
-            <p class="hero-subtitle">VirtualAIWorkforce.com isn't just a domain - it's the narrative that will determine which companies lead the next decade of enterprise value creation.</p>
-            <a href="#contact" class="cta-button">Secure Category Leadership</a>
+            <div class="hero-content">
+                <div class="hero-text">
+                    <div class="hero-brand">Virtual<span class="hero-brand-domain">AIWorkforce.com</span></div>
+                    <h1>The Category-Defining Asset for the $3T Enterprise AI Revolution</h1>
+                    <p class="hero-subtitle">VirtualAIWorkforce.com isn't just a domain - it's the narrative that will determine which companies lead the next decade of enterprise value creation.</p>
+                    <a href="#contact" class="cta-button">Secure Category Leadership</a>
+                </div>
+                <div class="hero-image-container">
+                    <div class="hero-image-wrapper">
+                        <img src="images/virtualaiworkforce.jpg" alt="Virtual AI Workforce - Three AI robots working with holographic data interfaces" loading="eager">
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -635,8 +789,16 @@
 
 <footer>
     <div class="container">
-        <p>VirtualAIWorkforce.com - The Definitive Category Asset for Enterprise AI</p>
-        <p style="margin-top: 1rem; opacity: 0.7;">Not a domain sale. A category acquisition.</p>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <div class="footer-logo-main">Virtual<span class="footer-logo-domain">AIWorkforce.com</span></div>
+                <div class="footer-logo-sub">The Enterprise AI Category Asset</div>
+            </div>
+            <div class="footer-text">
+                <p>VirtualAIWorkforce.com - The Definitive Category Asset for Enterprise AI</p>
+                <p style="margin-top: 1rem; opacity: 0.7;">Not a domain sale. A category acquisition.</p>
+            </div>
+        </div>
     </div>
 </footer>
 
