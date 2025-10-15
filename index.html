@@ -405,7 +405,7 @@
 
         .company-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 2rem;
         }
 
@@ -413,7 +413,7 @@
             background: #181c25;
             padding: 2rem;
             border-radius: 12px;
-            text-align: center;
+            text-align: left;
             border-left: 3px solid transparent;
             transition: all 0.3s ease;
         }
@@ -423,13 +423,58 @@
             transform: translateY(-4px);
         }
 
-        .company-card h3 {
-            color: var(--secondary);
+        .company-logo {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
             margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .company-logo.microsoft {
+            background: linear-gradient(135deg, #00a4ef, #0078d4);
+            color: white;
+        }
+
+        .company-logo.salesforce {
+            background: linear-gradient(135deg, #00a1e0, #0176d3);
+            color: white;
+        }
+
+        .company-logo.nvidia {
+            background: linear-gradient(135deg, #76b900, #5a8c00);
+            color: white;
+        }
+
+        .company-logo.uipath {
+            background: linear-gradient(135deg, #fa4616, #d63a13);
+            color: white;
+        }
+
+        .company-logo.openai {
+            background: linear-gradient(135deg, #10a37f, #0d8565);
+            color: white;
+        }
+
+        .company-logo.anthropic {
+            background: linear-gradient(135deg, #d4a574, #b8864f);
+            color: white;
+        }
+
+        .company-card h4 {
+            font-size: 1.3rem;
+            color: var(--secondary);
+            margin-bottom: 0.8rem;
+            font-weight: 600;
         }
 
         .company-card p {
             color: #bfc7d2;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
         }
 
         /* CTA Section - Updated for dark theme */
@@ -473,7 +518,7 @@
 
         .footer-content {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
             gap: 2rem;
         }
@@ -481,7 +526,7 @@
         .footer-logo {
             display: flex;
             flex-direction: column;
-            text-align: left;
+            text-align: right;
         }
 
         .footer-logo-main {
@@ -752,20 +797,45 @@
             <h2 class="section-title">Strategic Buyers</h2>
             <div class="company-grid">
                 <div class="company-card">
-                    <h3>UiPath</h3>
-                    <p>Natural evolution from "Agentic Automation" to "AI Workforce"</p>
+                    <div class="company-logo microsoft">MICROSOFT</div>
+                    <h4>Copilot → Workforce Orchestration</h4>
+                    <p>Extend Copilot from individual productivity to an enterprise orchestration layer for multi-agent workflows.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: stronger platform narrative, reduced churn, premium enterprise positioning.</p>
                 </div>
+
                 <div class="company-card">
-                    <h3>Salesforce</h3>
-                    <p>Perfect brand for the Agentforce initiative at scale</p>
+                    <div class="company-logo nvidia">NVIDIA</div>
+                    <h4>Move Up the Stack</h4>
+                    <p>Position Nvidia not just as infrastructure but as the infrastructure for productive, managed AI workforces.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: premium differentiation for OEMs, new enterprise demand signals.</p>
                 </div>
+
                 <div class="company-card">
-                    <h3>NVIDIA</h3>
-                    <p>Category ownership for the infrastructure enabling AI workers</p>
+                    <div class="company-logo uipath">UIPATH</div>
+                    <h4>RPA → Autonomous Workforce</h4>
+                    <p>Accelerate UiPath's evolution from task automation to workforce orchestration, protecting legacy revenues and opening new revenue layers.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: defend market share, lead category messaging.</p>
                 </div>
+
                 <div class="company-card">
-                    <h3>Microsoft</h3>
-                    <p>Strategic asset for the Copilot multi-agent enterprise vision</p>
+                    <div class="company-logo openai">OPENAI</div>
+                    <h4>Models → Managed Workforce</h4>
+                    <p>Expand beyond API access to offering fully managed AI workforces — turning model capabilities into turnkey enterprise solutions.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: new revenue streams, enterprise account expansion, competitive moat against open-source.</p>
+                </div>
+
+                <div class="company-card">
+                    <div class="company-logo anthropic">ANTHROPIC</div>
+                    <h4>Constitutional AI at Workforce Scale</h4>
+                    <p>Position Claude's constitutional AI framework as the safety standard for enterprise AI workforce deployment and governance.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: enterprise trust differentiation, compliance-ready positioning, premium pricing power.</p>
+                </div>
+
+                <div class="company-card">
+                    <div class="company-logo salesforce">SALESFORCE</div>
+                    <h4>Agentforce Brand Acceleration</h4>
+                    <p>Use the domain to instantly legitimize a global "Agentforce" offering — shortening adoption cycles for CRM + workforce automation bundles.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: category PR, expanded partner pipelines, higher deal ARR.</p>
                 </div>
             </div>
         </div>
@@ -792,27 +862,13 @@
         <div class="footer-content">
             <div class="footer-logo">
                 <div class="footer-logo-main">Virtual<span class="footer-logo-domain">AIWorkforce.com</span></div>
-                <div class="footer-logo-sub">The Enterprise AI Category Asset</div>
-            </div>
-            <div class="footer-text">
-                <p>VirtualAIWorkforce.com - The Definitive Category Asset for Enterprise AI</p>
-                <p style="margin-top: 1rem; opacity: 0.7;">Not a domain sale. A category acquisition.</p>
+                <div class="footer-logo-sub">The Definitive Category Asset for Enterprise AI</div>
             </div>
         </div>
     </div>
 </footer>
 
     <script>
-        // Simple scroll effect for header
-        window.addEventListener('scroll', function() {
-            const header = document.querySelector('header');
-            if (window.scrollY > 100) {
-                header.style.boxShadow = '0 2px 20px rgba(0,0,0,0.3)';
-            } else {
-                header.style.boxShadow = 'none';
-            }
-        });
-
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -826,7 +882,6 @@
                 }
             });
         });
-
     </script>
 </body>
 </html>
