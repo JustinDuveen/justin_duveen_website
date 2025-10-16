@@ -56,19 +56,109 @@
         .briefing-content.loaded { opacity: 1; display: block; }
 
         .briefing-header {
-            background: linear-gradient(135deg, var(--dark-bg) 0%, #101824 40%, #1a2230 100%);
-            padding: 120px 0 80px; text-align: center; position: relative; border-bottom: 1px solid #2a3441;
+            background: linear-gradient(135deg, #060609 0%, #0a0e1f 40%, #0d1220 100%);
+            padding: 80px 0 60px; position: relative; border-bottom: 1px solid #2a3441;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
         }
         .briefing-header::after {
-            content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 180px;
-            background: linear-gradient(to top, rgba(11,11,15,0.8), transparent); pointer-events: none;
+            content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 120px;
+            background: linear-gradient(to top, rgba(11,11,15,0.95), transparent); pointer-events: none;
+            z-index: 1;
+        }
+        .briefing-header::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 65% 50%, rgba(0, 100, 200, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .briefing-header-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .briefing-header-text {
+            text-align: left;
+        }
+
+        .briefing-header-image {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .briefing-image-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 150, 255, 0.25);
+            box-shadow:
+                0 0 30px rgba(0, 100, 200, 0.2),
+                0 10px 40px rgba(0, 0, 0, 0.6),
+                inset 0 0 60px rgba(0, 150, 255, 0.03);
+        }
+
+        .briefing-image-wrapper::before {
+            content: "";
+            position: absolute;
+            top: -1px; left: -1px; right: -1px; bottom: -1px;
+            background: linear-gradient(135deg, rgba(0, 150, 255, 0.3), rgba(0, 200, 255, 0.15));
+            border-radius: 12px;
+            z-index: -1;
+            opacity: 0.5;
+            filter: blur(6px);
+        }
+
+        .briefing-image-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 12px;
+            position: relative;
+            filter: brightness(0.85) contrast(1.1);
+        }
+
+        /* Secure document overlay effect */
+        .briefing-image-wrapper::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            pointer-events: none;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.3);
         }
         .confidential-badge {
             background: rgba(255, 0, 0, 0.12); color: #ff6b6b; padding: 0.5rem 1rem; border-radius: 20px;
             border: 1px solid #ff6b6b; font-size: 0.8rem; margin-bottom: 1.5rem; display: inline-block;
         }
-        .briefing-title { font-size: 3.2rem; font-weight: 700; margin-bottom: 1rem; line-height: 1.05; }
-        .briefing-subtitle { font-size: 1.25rem; opacity: 0.95; max-width: 820px; margin: 0 auto; color: #cfd8e3; }
+        .briefing-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            line-height: 1.15;
+            color: #ffffff;
+        }
+        .briefing-subtitle {
+            font-size: 1.15rem;
+            opacity: 0.9;
+            margin: 0;
+            color: #b8c5d6;
+            line-height: 1.6;
+        }
 
         .briefing-body { max-width: 1200px; margin: 0 auto; padding: 80px 32px; }
 
@@ -114,12 +204,93 @@
 
         .footer-note { text-align: center; margin-top: 2.5rem; padding: 1.5rem; border-top: 1px solid #2a3441; color: #777; font-size: 0.9rem; }
 
+        @media (max-width: 1024px) {
+            .briefing-header-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .briefing-header-text {
+                text-align: center;
+            }
+
+            .briefing-image-wrapper {
+                max-width: 450px;
+                margin: 0 auto;
+            }
+        }
+
         @media (max-width: 768px) {
-            .briefing-title { font-size: 2.2rem; }
-            .briefing-subtitle { font-size: 1rem; }
+            .briefing-header {
+                padding: 50px 0 40px;
+                min-height: auto;
+            }
+
+            .briefing-header-content {
+                padding: 0 20px;
+                gap: 2rem;
+            }
+
+            .briefing-title {
+                font-size: 1.9rem;
+                margin-bottom: 1rem;
+            }
+            .briefing-subtitle {
+                font-size: 1rem;
+                line-height: 1.5;
+            }
             .section { padding: 22px; margin: 28px 0; }
             .briefing-body { padding: 40px 20px; }
             .integration-pathways { grid-template-columns: 1fr; }
+
+            .briefing-image-wrapper {
+                max-width: 100%;
+                border-radius: 10px;
+            }
+
+            .briefing-image-wrapper::before,
+            .briefing-image-wrapper::after {
+                border-radius: 10px;
+            }
+
+            .briefing-image-wrapper img {
+                border-radius: 10px;
+            }
+
+            .confidential-badge {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .briefing-header {
+                padding: 40px 0 30px;
+            }
+
+            .briefing-header-content {
+                padding: 0 16px;
+            }
+
+            .briefing-title {
+                font-size: 1.6rem;
+            }
+            .briefing-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .briefing-image-wrapper {
+                border-radius: 8px;
+            }
+
+            .briefing-image-wrapper::before,
+            .briefing-image-wrapper::after {
+                border-radius: 8px;
+            }
+
+            .briefing-image-wrapper img {
+                border-radius: 8px;
+            }
         }
     </style>
 </head>
@@ -146,9 +317,18 @@
     <!-- Briefing Content -->
     <div class="briefing-content" id="briefingContent" aria-hidden="true">
         <div class="briefing-header">
-            <div class="confidential-badge">CONFIDENTIAL &amp; PROPRIETARY</div>
-            <h1 class="briefing-title">Strategic Category Acquisition Brief</h1>
-            <p class="briefing-subtitle">VirtualAIWorkforce.com — securing the narrative and market position for the $3T enterprise AI era</p>
+            <div class="briefing-header-content">
+                <div class="briefing-header-text">
+                    <div class="confidential-badge">CONFIDENTIAL &amp; PROPRIETARY</div>
+                    <h1 class="briefing-title">Strategic Category Acquisition Brief</h1>
+                    <p class="briefing-subtitle">VirtualAIWorkforce.com — securing the narrative and market position for the $3T enterprise AI era</p>
+                </div>
+                <div class="briefing-header-image">
+                    <div class="briefing-image-wrapper">
+                        <img src="images/virtualaiworkforce.jpg" alt="Virtual AI Workforce - Strategic Enterprise AI Asset" loading="eager">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="briefing-body">
@@ -156,7 +336,7 @@
             <div class="section" role="region" aria-label="Executive Summary">
                 <h2 class="section-title">Executive Summary</h2>
                 <p style="font-size:1.05rem; color:#bfc7d2; line-height:1.7;">
-                    <strong>VirtualAIWorkforce.com</strong> is the unclaimed, category-defining asset for the next phase of enterprise transformation — where AI moves from “tools” to a managed, autonomous workforce.
+                    <strong>VirtualAIWorkforce.com</strong> is the unclaimed, category-defining asset for the next phase of enterprise transformation — where AI moves from "tools" to a managed, autonomous workforce.
                     Acquiring this asset secures narrative control, accelerates go-to-market, and materially changes the strategic conversation with customers, analysts, and investors.
                 </p>
                 <ul style="margin-top:1rem; color:#bfc7d2; line-height:1.7; list-style: none; padding-left:0;">
@@ -164,6 +344,33 @@
                     <li>• <strong>Timing:</strong> a 6–18 month window exists before the market standardizes on category language.</li>
                     <li>• <strong>Impact:</strong> narrative control multiplies the ROI of product, platform, and infrastructure investments.</li>
                 </ul>
+            </div>
+
+            <!-- Strategic Summary -->
+            <div class="section" role="region" aria-label="Strategic Summary" style="background: linear-gradient(135deg, #0a0e1f 0%, #0f1116 100%); border: 2px solid rgba(0, 150, 255, 0.3);">
+                <h2 class="section-title">Strategic Summary</h2>
+                <div style="display: grid; gap: 1.5rem; margin-top: 1.5rem;">
+                    <div style="background: rgba(0, 150, 255, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                        <h4 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Asset</h4>
+                        <p style="color: #e8f0f7; font-size: 1.15rem; font-weight: 600; margin: 0;">VirtualAIWorkforce.com</p>
+                    </div>
+                    <div style="background: rgba(0, 150, 255, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                        <h4 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Category</h4>
+                        <p style="color: #e8f0f7; margin: 0;">Enterprise AI Workforce / Workforce-as-a-Service</p>
+                    </div>
+                    <div style="background: rgba(0, 150, 255, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                        <h4 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Strategic Value</h4>
+                        <p style="color: #e8f0f7; margin: 0;">Defines and anchors the emerging "Virtual AI Workforce" category — a narrative that will underpin the next decade of enterprise automation.</p>
+                    </div>
+                    <div style="background: rgba(0, 150, 255, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                        <h4 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Primary Leverage</h4>
+                        <p style="color: #e8f0f7; margin: 0;">Instant authority over the terminology that analysts, journalists, and investors will use to describe this shift.</p>
+                    </div>
+                    <div style="background: rgba(0, 150, 255, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--accent-cyan);">
+                        <h4 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Acquisition Window</h4>
+                        <p style="color: #e8f0f7; font-weight: 600; margin: 0;">6 – 18 months before category language and public perception solidify.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Strategic Imperative -->
@@ -207,9 +414,9 @@
 
             <!-- ROI Analysis -->
             <div class="section" role="region" aria-label="ROI Analysis">
-                <h2 class="section-title">2. ROI: Why This Is Seven-Figure, Not Domain-Cost</h2>
+                <h2 class="section-title">2. ROI: Category Ownership Leads To Market Dominance</h2>
                 <p style="color:#bfc7d2;">
-                    Value is measured by the outcome unlocked — not domain comparables. The cost of delayed category ownership materially increases marketing, partner, and retention spend required to reach parity.
+                    Value is measured by the outcome unlocked — not domain comparables. The cost of delayed category ownership materially increases marketing, partner and retention spend required to reach parity.
                 </p>
 
                 <div class="roi-grid" role="list">
@@ -230,7 +437,7 @@
 
            <!-- Integration Pathways -->
             <div class="section" role="region" aria-label="Integration Pathways">
-                <h2 class="section-title">3. Integration Pathways — Clear, Rapid, High-ROI Plays</h2>
+                <h2 class="section-title">3. Value Realization Roadmap — Strategic Integration Scenarios by Enterprise</h2>
                 <p style="color:#bfc7d2; margin-bottom:1rem;">
                     Below are practical, short-to-medium term initiatives that convert ownership into measurable commercial advantage.
                 </p>
