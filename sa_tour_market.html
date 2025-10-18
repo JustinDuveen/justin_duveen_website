@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>South African Tour Operator Market Analysis — Interactive</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa8bf;--accent:#ff7a00}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;color:#e6eef8;background:linear-gradient(180deg,#071025 0%, #07122a 60%);}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px;}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    h1{font-size:20px;margin:0;color:#fff}
+    p.lead{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .card{background:rgba(255,255,255,0.02);border-radius:12px;padding:14px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+    .controls{display:flex;gap:8px;align-items:center}
+    button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:white;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+    .small{font-size:12px;padding:6px 10px}
+    svg{width:100%;height:260px}
+    .meta{font-size:12px;color:var(--muted);margin-top:8px}
+    .stat{font-weight:700;color:#fff;font-size:22px}
+    .donut-wrap{display:flex;align-items:center;gap:12px}
+    .notes{font-size:13px;color:var(--muted);line-height:1.4}
+    .footer{margin-top:14px;color:var(--muted);font-size:12px}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .legend .item{display:flex;gap:8px;align-items:center}
+    .bullet{width:14px;height:14px;border-radius:4px}
+    .download{margin-left:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>South African Tour Operator Market Analysis — Interactive</h1>
+        <p class="lead">Visual summary of employment, market structure, major players and business dynamics. Play the timeline to animate projections.</p>
+      </div>
+      <div class="controls">
+        <button id="play" title="Play timeline">▶ Play</button>
+        <button id="pause" class="ghost small" title="Pause timeline">Pause</button>
+        <button id="download" class="small download" title="Download this HTML">Download HTML</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div>
+        <div class="card" id="employmentCard">
+          <h3 style="margin:0 0 8px;color:#dfeeff">Employment: 2022 → 2024 (animated)</h3>
+          <svg id="employmentChart" viewBox="0 0 800 260"></svg>
+          <div class="meta">2022 baseline → 2023 up 33% → 2024 = 1.68M jobs (+15% vs 2023)</div>
+        </div>
+
+        <div class="card" style="margin-top:14px" id="projectionCard">
+          <h3 style="margin:0 0 8px;color:#dfeeff">GDP Contribution & Job Projection (2024 → 2034)</h3>
+          <svg id="gdpChart" viewBox="0 0 800 260"></svg>
+          <div class="meta">GDP contribution projected to reach <strong>10.8%</strong> by 2034 and add <strong>720,000</strong> jobs.</div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="card" id="marketShare">
+          <h3 style="margin:0 0 8px;color:#dfeeff">Market Structure — Share & Opportunity</h3>
+          <div class="donut-wrap">
+            <svg id="donut" width="220" height="220"></svg>
+            <div style="flex:1">
+              <div class="stat" id="dominant">Tourvest — Market Leader</div>
+              <div class="notes">Large conglomerates: Tourvest, Cullinan Holdings, Rennies BCD, Flight Centre, Travelstart, Harvey World Travel, African Eagle, Nomad Africa. Best entry points: independents, hotel concierge teams, activity platforms, individual guides.</div>
+              <div class="legend" id="legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px" id="dynamics">
+          <h3 style="margin:0 0 8px;color:#dfeeff">Key Business Dynamics (interactive)</h3>
+          <svg id="bubbles" viewBox="0 0 400 260"></svg>
+          <div class="meta">Hover bubbles to see how each dynamic affects translation-service opportunities.</div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h3 style="margin:0 0 8px;color:#dfeeff">Quick Insights</h3>
+          <ul style="color:var(--muted);font-size:13px;margin:8px 0;padding-left:18px">
+            <li>Independent/boutique operators & individual guides are the most practical beachhead.</li>
+            <li>Large groups have internal solutions — target niche value props (real-time, on-demand translation for activities).</li>
+            <li>Adventure & eco tourism growth increases demand for multilingual, localized content.</li>
+          </ul>
+        </div>
+
+      </aside>
+    </div>
+
+    <div class="footer">Source: figures provided in brief. This interactive visualization uses proportional approximations derived from the supplied data: 2024 jobs = 1.68M (±). Click "Download HTML" to save a copy.</div>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // Derived numbers from the brief
+    const jobs2024 = 1680000;
+    const jobs2023 = Math.round(jobs2024 / 1.15);
+    const jobs2022 = Math.round(jobs2023 / 1.33);
+
+    const yearsEmployment = [2022,2023,2024];
+    const employmentData = [jobs2022, jobs2023, jobs2024];
+
+    // Market share (illustrative split based on brief)
+    const market = [
+      {name: 'Tourvest (leader)', value: 35},
+      {name: 'Other large players', value: 30},
+      {name: 'Independents & guides', value: 35}
+    ];
+
+    // GDP projection 2024 -> 2034
+    const gdp2024 = 9.2; // % employment share in 2023; use as baseline proxy
+    const gdp2034 = 10.8; // projection given
+    const jobsAdd2034 = 720000;
+
+    // Employment Chart (animated bars)
+    (function(){
+      const svg = d3.select('#employmentChart');
+      const width = 760, height = 220, margin = {top:20,right:20,bottom:30,left:60};
+      const x = d3.scaleBand().domain(yearsEmployment).range([margin.left, width-margin.right]).padding(0.4);
+      const y = d3.scaleLinear().domain([0, d3.max(employmentData) * 1.15]).range([height - margin.bottom, margin.top]);
+
+      const g = svg.attr('viewBox',`0 0 ${width} ${height}`);
+
+      g.append('g').attr('transform',`translate(0,${height-margin.bottom})`).call(d3.axisBottom(x).tickSizeOuter(0));
+      g.append('g').attr('transform',`translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d=>d/1000000+ 'M'));
+
+      // bars
+      g.selectAll('.bar').data(employmentData).join('rect')
+        .attr('class','bar')
+        .attr('x', (d,i)=>x(yearsEmployment[i]))
+        .attr('y', y(0))
+        .attr('width', x.bandwidth())
+        .attr('height', 0)
+        .attr('fill','#3fb6ff')
+        .transition().duration(900)
+        .attr('y', d=>y(d))
+        .attr('height', d=>y(0)-y(d));
+
+      // value labels
+      g.selectAll('.label').data(employmentData).join('text')
+        .attr('class','label')
+        .attr('x',(d,i)=>x(yearsEmployment[i])+x.bandwidth()/2)
+        .attr('y',d=>y(d)-8)
+        .attr('text-anchor','middle')
+        .attr('fill','white')
+        .text(d=> (d/1000000).toFixed(2) + 'M')
+        .style('opacity',0)
+        .transition().delay(900).duration(400).style('opacity',1);
+
+    })();
+
+    // GDP Projection (line + area)
+    (function(){
+      const svg = d3.select('#gdpChart');
+      const width = 760, height = 220, margin = {top:18,right:40,bottom:30,left:52};
+
+      const years = d3.range(2024,2035);
+      // linear interpolation from gdp2024 to gdp2034
+      const gdpValues = years.map((y,i)=> gdp2024 + (gdp2034 - gdp2024) * (i/(years.length-1)) );
+      // jobs projection based on added 720k by 2034 linearly
+      const jobsValues = years.map((y,i)=> Math.round(jobs2024 + (jobsAdd2034 * (i/(years.length-1)))));
+
+      const x = d3.scaleLinear().domain([2024,2034]).range([margin.left,width-margin.right]);
+      const y = d3.scaleLinear().domain([d3.min(gdpValues)*0.95, d3.max(gdpValues)*1.06]).range([height-margin.bottom, margin.top]);
+
+      const g = svg.attr('viewBox',`0 0 ${width} ${height}`);
+      // axis
+      g.append('g').attr('transform',`translate(0,${height-margin.bottom})`).call(d3.axisBottom(x).ticks(6).tickFormat(d3.format('d')));
+      g.append('g').attr('transform',`translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d=>d + '%'));
+
+      const line = d3.line().x((d,i)=>x(years[i])).y(d=>y(d)).curve(d3.curveMonotoneX);
+
+      g.append('path').datum(gdpValues).attr('fill','none').attr('stroke','#ffa24d').attr('stroke-width',3).attr('d',line).attr('stroke-dasharray','6 0')
+        .attr('stroke-dashoffset',1000)
+        .transition().duration(1400).attr('stroke-dashoffset',0);
+
+      // area under line
+      const area = d3.area().x((d,i)=>x(years[i])).y0(y(0)).y1(d=>y(d)).curve(d3.curveMonotoneX);
+      g.append('path').datum(gdpValues).attr('d',area).attr('opacity',0.07).attr('fill','#ffa24d');
+
+      // interactive tooltip showing jobs for each year
+      const focus = g.append('g').style('display','none');
+      focus.append('circle').attr('r',5).attr('fill','#fff');
+      const tip = d3.select('body').append('div').style('position','absolute').style('pointer-events','none')
+        .style('background','rgba(6,10,20,0.9)').style('color','#fff').style('padding','8px 10px').style('border-radius','8px').style('font-size','13px').style('display','none');
+
+      svg.on('mousemove', (event)=>{
+        const [mx] = d3.pointer(event);
+        const year = Math.round(x.invert(mx*(svg.node().getBoundingClientRect().width/width)));
+        if(year < 2024 || year > 2034) { tip.style('display','none'); return }
+        const i = years.indexOf(year);
+        if(i<0) { tip.style('display','none'); return }
+        const gdp = gdpValues[i].toFixed(2);
+        const jobs = (jobsValues[i]/1000000).toFixed(2) + 'M';
+        tip.style('display','block').html(`<strong>${year}</strong><br>GDP contr.: ${gdp}%<br>Jobs: ${jobs}`)
+          .style('left',(event.pageX+14)+'px').style('top',(event.pageY-18)+'px');
+      }).on('mouseleave', ()=> tip.style('display','none'));
+
+    })();
+
+    // Donut chart for market share
+    (function(){
+      const svg = d3.select('#donut');
+      const width = +svg.attr('width');
+      const height = +svg.attr('height');
+      const radius = Math.min(width,height)/2 - 10;
+      const g = svg.append('g').attr('transform',`translate(${width/2},${height/2})`);
+
+      const color = d3.scaleOrdinal().domain(market.map(d=>d.name)).range(['#ffb86b','#7bd389','#7fb3ff']);
+
+      const pie = d3.pie().value(d=>d.value);
+      const arc = d3.arc().innerRadius(radius*0.55).outerRadius(radius);
+
+      const arcs = g.selectAll('path').data(pie(market)).join('path')
+        .attr('d',arc)
+        .attr('fill',d=>color(d.data.name))
+        .attr('stroke','rgba(0,0,0,0.25)')
+        .attr('opacity',0.98)
+        .on('mouseover', (event,d)=>{
+          d3.select(event.currentTarget).transition().duration(220).attr('transform', 'scale(1.03)');
+          showLegendInfo(d.data);
+        })
+        .on('mouseout',(event)=>{ d3.select(event.currentTarget).transition().duration(220).attr('transform','scale(1)'); showLegendInfo(); });
+
+      // legend
+      const legend = d3.select('#legend');
+      legend.selectAll('.item').data(market).join('div').attr('class','item')
+        .html(d=>`<div class='bullet' style='background:${color(d.name)}'></div><div>${d.name} — ${d.value}%</div>`);
+
+      function showLegendInfo(d){
+        const dom = d3.select('#dominant');
+        if(!d) dom.text('Tourvest — Market Leader');
+        else dom.text(`${d.name} — ${d.value}%`);
+      }
+    })();
+
+    // Bubbles for business dynamics
+    (function(){
+      const dynamics = [
+        {name:'Diversified revenue', impact:0.9, note:'Hotels/retail/financial services reduce churn, translation value: corporate contracts'},
+        {name:'Tech & online', impact:0.8, note:'Booking platforms + apps — integrate TranslateSwift for UX'},
+        {name:'Adventure & niche', impact:0.7, note:'On-demand translation for activity guides'},
+        {name:'Independent guides', impact:0.85, note:'Great beachhead — 3,000-5,000 independent guides'},
+      ];
+      const svg = d3.select('#bubbles');
+      const width = 400, height = 260;
+      const g = svg.attr('viewBox',`0 0 ${width} ${height}`).append('g');
+
+      const simulation = d3.forceSimulation(dynamics).force('x', d3.forceX(width/2).strength(0.03))
+        .force('y', d3.forceY(height/2).strength(0.03)).force('collide', d3.forceCollide(d=>30 + d.impact*30));
+
+      const node = g.selectAll('g').data(dynamics).join('g').call(d=>d.append('circle').attr('r',d=>20 + d.impact*28).attr('fill','#65d1ff').attr('opacity',0.95))
+         .on('mouseover', (event,d)=> showBubbleTip(event,d)).on('mouseout', hideBubbleTip);
+
+      node.append('text').text(d=>d.name.split(' ')[0]).attr('text-anchor','middle').attr('dy',4).attr('font-size',11).attr('fill','#04283b');
+
+      simulation.on('tick', ()=>{
+        node.attr('transform', d=>`translate(${d.x},${d.y})`);
+      });
+
+      const tip = d3.select('body').append('div').style('position','absolute').style('pointer-events','none')
+        .style('background','rgba(6,10,20,0.9)').style('color','#fff').style('padding','8px 10px').style('border-radius','8px').style('font-size','13px').style('display','none');
+
+      function showBubbleTip(event,d){ tip.style('display','block').html(`<strong>${d.name}</strong><br>${d.note}`).style('left',(event.pageX+12)+'px').style('top',(event.pageY-12)+'px'); }
+      function hideBubbleTip(){ tip.style('display','none') }
+
+    })();
+
+    // Controls (play/pause timeline for GDP chart animation effect)
+    let anim;
+    document.getElementById('play').addEventListener('click', ()=>{
+      const svg = d3.select('#gdpChart');
+      const width = 760; const years = d3.range(2024,2035);
+      const path = svg.select('path');
+      // simple shimmer by stroking-dashoffset animation
+      path.transition().duration(2000).attrTween('stroke-dashoffset', function(){
+        return d3.interpolateNumber(1000,0);
+      });
+    });
+    document.getElementById('pause').addEventListener('click', ()=>{ /* placeholder to stop transitions if needed */ });
+
+    // Download HTML helper
+    document.getElementById('download').addEventListener('click', ()=>{
+      const html = `<!doctype html>\n${document.documentElement.outerHTML}`;
+      const blob = new Blob([html],{type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'SA_Tour_Operator_Market_Analysis.html'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+  </script>
+</body>
+</html>

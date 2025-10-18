@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tour Translation & MICE - Interactive Financial Model</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+        .assumptions-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        .assumptions-panel h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 16px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .assumption-group {
+            margin-bottom: 20px;
+        }
+        .assumption-group-title {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            margin-top: 15px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .results {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .section-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        th {
+            background: #34495e;
+            color: white;
+            padding: 12px;
+            text-align: right;
+            font-weight: 600;
+        }
+        th:first-child {
+            text-align: left;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: right;
+        }
+        td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: #1a1a1a;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .section-header {
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        .mice-section-header {
+            background: #8e44ad;
+            color: white;
+            font-weight: 600;
+        }
+        .total-row {
+            background: #ecf0f1;
+            font-weight: 600;
+            border-top: 2px solid #2c3e50;
+        }
+        .total-row:hover {
+            background: #d5dbdb;
+        }
+        .mice-total-row {
+            background: #f4ecf7;
+            font-weight: 600;
+            border-top: 2px solid #8e44ad;
+        }
+        .combined-total-row {
+            background: #2c3e50;
+            color: white;
+            font-weight: 700;
+            border-top: 2px solid #1a1a1a;
+        }
+        .positive {
+            color: #27ae60;
+        }
+        .negative {
+            color: #e74c3c;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .metric-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        .metric-card.mice {
+            border-left-color: #8e44ad;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            font-size: 18px;
+            color: #1a1a1a;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+        .currency {
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tour Translation & MICE - Interactive Financial Model</h1>
+        <p class="subtitle">South African Market | Unified Per-Attendee Pricing Model</p>
+
+        <div class="layout">
+            <div class="assumptions-panel">
+                <h2>Assumptions</h2>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">Per-Attendee Pricing</div>
+                    <div class="form-group">
+                        <label>Small Group (&lt;50): $<span id="priceSmallDisplay">4.99</span>/person</label>
+                        <input type="number" id="priceSmall" value="4.99" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Medium Group (50-499): $<span id="priceMediumDisplay">2.75</span>/person</label>
+                        <input type="number" id="priceMedium" value="2.75" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Large Group (500+): $<span id="priceLargeDisplay">1.99</span>/person</label>
+                        <input type="number" id="priceLarge" value="1.99" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">Variable Costs</div>
+                    <div class="form-group">
+                        <label>Translation API/Hour: $<span id="costTransDisplay">0.76</span></label>
+                        <input type="number" id="costTrans" value="0.76" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Twilio per User/Hour: $<span id="costTwilioDisplay">0.24</span></label>
+                        <input type="number" id="costTwilio" value="0.24" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">Commission Structure</div>
+                    <div class="form-group">
+                        <label>Commission Rate: <span id="commDisplay">20</span>%</label>
+                        <input type="number" id="comm" value="20" step="1" min="0" max="100">
+                    </div>
+                </div>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">Tour Operations</div>
+                    <div class="form-group">
+                        <label>Avg Tour Hours: <span id="tourHrsDisplay">2.0</span></label>
+                        <input type="number" id="tourHrs" value="2.0" step="0.5" min="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Tours/Week Peak: <span id="toursWeekPeakDisplay">5</span></label>
+                        <input type="number" id="toursWeekPeak" value="5" step="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tours/Week Off: <span id="toursWeekOffDisplay">2</span></label>
+                        <input type="number" id="toursWeekOff" value="2" step="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tour Group Size Mix - Small %: <span id="tourSmallPctDisplay">30</span>%</label>
+                        <input type="number" id="tourSmallPct" value="30" step="5" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Tour Group Size Mix - Medium %: <span id="tourMediumPctDisplay">50</span>%</label>
+                        <input type="number" id="tourMediumPct" value="50" step="5" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Tour Group Size Mix - Large %: <span id="tourLargePctDisplay">20</span>%</label>
+                        <input type="number" id="tourLargePct" value="20" step="5" min="0" max="100">
+                    </div>
+                </div>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">Guide Growth</div>
+                    <div class="form-group">
+                        <label>Year 1: <span id="guides1Display">50</span></label>
+                        <input type="number" id="guides1" value="50" step="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Year 2: <span id="guides2Display">150</span></label>
+                        <input type="number" id="guides2" value="150" step="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Year 3: <span id="guides3Display">450</span></label>
+                        <input type="number" id="guides3" value="450" step="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Year 4: <span id="guides4Display">200</span></label>
+                        <input type="number" id="guides4" value="200" step="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Year 5: <span id="guides5Display">1350</span></label>
+                        <input type="number" id="guides5" value="1350" step="10" min="1">
+                    </div>
+                </div>
+
+                <div class="assumption-group">
+                    <div class="assumption-group-title">MICE Events</div>
+                    <div class="form-group">
+                        <label>Small Events/Year: <span id="miceSmallEventsDisplay">12</span></label>
+                        <input type="number" id="miceSmallEvents" value="12" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Small Event Attendees: <span id="miceSmallAttendeesDisplay">30</span></label>
+                        <input type="number" id="miceSmallAttendees" value="30" step="5" min="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Medium Events/Year: <span id="miceMediumEventsDisplay">6</span></label>
+                        <input type="number" id="miceMediumEvents" value="6" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Medium Event Attendees: <span id="miceMediumAttendeesDisplay">200</span></label>
+                        <input type="number" id="miceMediumAttendees" value="200" step="25" min="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Large Events/Year: <span id="miceLargeEventsDisplay">2</span></label>
+                        <input type="number" id="miceLargeEvents" value="2" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Large Event Attendees: <span id="miceLargeAttendeesDisplay">800</span></label>
+                        <input type="number" id="miceLargeAttendees" value="800" step="100" min="500">
+                    </div>
+                    <div class="form-group">
+                        <label>Event Hours/Attendee: <span id="miceHourDisplay">4.0</span></label>
+                        <input type="number" id="miceHour" value="4.0" step="0.5" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>MICE Growth Year 1: <span id="miceGrowth1Display">0</span>%</label>
+                        <input type="number" id="miceGrowth1" value="0" step="10" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>MICE Growth Year 2: <span id="miceGrowth2Display">50</span>%</label>
+                        <input type="number" id="miceGrowth2" value="50" step="10" min="0" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label>MICE Growth Year 3+: <span id="miceGrowth3Display">100</span>%</label>
+                        <input type="number" id="miceGrowth3" value="100" step="10" min="0" max="300">
+                    </div>
+                </div>
+            </div>
+
+            <div class="results">
+                <div class="section-card">
+                    <h3>Combined Financial Summary</h3>
+                    <table id="annualTable">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Year 1</th>
+                                <th>Year 2</th>
+                                <th>Year 3</th>
+                                <th>Year 4</th>
+                                <th>Year 5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="section-header">
+                                <td colspan="6">TOUR BUSINESS</td>
+                            </tr>
+                            <tr>
+                                <td>Active Guides</td>
+                                <td id="y1_guides">50</td>
+                                <td id="y2_guides">150</td>
+                                <td id="y3_guides">450</td>
+                                <td id="y4_guides">200</td>
+                                <td id="y5_guides">1,350</td>
+                            </tr>
+                            <tr>
+                                <td>Total Tour Hours</td>
+                                <td id="y1_tour_hours">18,200</td>
+                                <td id="y2_tour_hours">54,600</td>
+                                <td id="y3_tour_hours">163,800</td>
+                                <td id="y4_tour_hours">72,800</td>
+                                <td id="y5_tour_hours">491,400</td>
+                            </tr>
+                            <tr>
+                                <td>Tour Attendees</td>
+                                <td id="y1_tour_attendees">61,880</td>
+                                <td id="y2_tour_attendees">185,640</td>
+                                <td id="y3_tour_attendees">556,920</td>
+                                <td id="y4_tour_attendees">247,520</td>
+                                <td id="y5_tour_attendees">1,670,760</td>
+                            </tr>
+                            <tr>
+                                <td>Individual Revenue (30%)</td>
+                                <td class="positive" id="y1_tour_revenue_ind">$92,634</td>
+                                <td class="positive" id="y2_tour_revenue_ind">$277,903</td>
+                                <td class="positive" id="y3_tour_revenue_ind">$833,709</td>
+                                <td class="positive" id="y4_tour_revenue_ind">$370,537</td>
+                                <td class="positive" id="y5_tour_revenue_ind">$2,501,128</td>
+                            </tr>
+                            <tr>
+                                <td>Family Revenue (50%)</td>
+                                <td class="positive" id="y1_tour_revenue_fam">$309,091</td>
+                                <td class="positive" id="y2_tour_revenue_fam">$927,272</td>
+                                <td class="positive" id="y3_tour_revenue_fam">$2,781,815</td>
+                                <td class="positive" id="y4_tour_revenue_fam">$1,236,362</td>
+                                <td class="positive" id="y5_tour_revenue_fam">$8,345,446</td>
+                            </tr>
+                            <tr>
+                                <td>Group Revenue (20%)</td>
+                                <td class="positive" id="y1_tour_revenue_grp">$222,644</td>
+                                <td class="positive" id="y2_tour_revenue_grp">$667,933</td>
+                                <td class="positive" id="y3_tour_revenue_grp">$2,003,798</td>
+                                <td class="positive" id="y4_tour_revenue_grp">$890,577</td>
+                                <td class="positive" id="y5_tour_revenue_grp">$6,011,394</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>Tour Revenue</td>
+                                <td class="positive" id="y1_tour_revenue">$624,369</td>
+                                <td class="positive" id="y2_tour_revenue">$1,873,108</td>
+                                <td class="positive" id="y3_tour_revenue">$5,619,322</td>
+                                <td class="positive" id="y4_tour_revenue">$2,497,476</td>
+                                <td class="positive" id="y5_tour_revenue">$16,857,968</td>
+                            </tr>
+                            <tr>
+                                <td>Translation API Costs</td>
+                                <td class="negative" id="y1_tour_cost_trans">-$13,832</td>
+                                <td class="negative" id="y2_tour_cost_trans">-$41,496</td>
+                                <td class="negative" id="y3_tour_cost_trans">-$124,488</td>
+                                <td class="negative" id="y4_tour_cost_trans">-$55,328</td>
+                                <td class="negative" id="y5_tour_cost_trans">-$373,464</td>
+                            </tr>
+                            <tr>
+                                <td>Twilio Costs</td>
+                                <td class="negative" id="y1_tour_cost_twilio">-$14,851</td>
+                                <td class="negative" id="y2_tour_cost_twilio">-$44,554</td>
+                                <td class="negative" id="y3_tour_cost_twilio">-$133,661</td>
+                                <td class="negative" id="y4_tour_cost_twilio">-$59,403</td>
+                                <td class="negative" id="y5_tour_cost_twilio">-$400,982</td>
+                            </tr>
+                            <tr>
+                                <td>Guide Commissions (20%)</td>
+                                <td class="negative" id="y1_tour_comm">-$61,889</td>
+                                <td class="negative" id="y2_tour_comm">-$185,735</td>
+                                <td class="negative" id="y3_tour_comm">-$555,804</td>
+                                <td class="negative" id="y4_tour_comm">-$247,098</td>
+                                <td class="negative" id="y5_tour_comm">-$1,663,965</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>Tour Variable Costs</td>
+                                <td class="negative" id="y1_tour_var_costs">-$90,572</td>
+                                <td class="negative" id="y2_tour_var_costs">-$271,785</td>
+                                <td class="negative" id="y3_tour_var_costs">-$813,953</td>
+                                <td class="negative" id="y4_tour_var_costs">-$361,829</td>
+                                <td class="negative" id="y5_tour_var_costs">-$2,438,411</td>
+                            </tr>
+                            <tr>
+                                <td>Tour Contribution Margin</td>
+                                <td class="positive" id="y1_tour_contribution">$218,875</td>
+                                <td class="positive" id="y2_tour_contribution">$656,888</td>
+                                <td class="positive" id="y3_tour_contribution">$1,965,067</td>
+                                <td class="positive" id="y4_tour_contribution">$873,661</td>
+                                <td class="positive" id="y5_tour_contribution">$5,881,412</td>
+                            </tr>
+
+                            <tr class="mice-section-header">
+                                <td colspan="6">MICE BUSINESS</td>
+                            </tr>
+                            <tr>
+                                <td>Small Events</td>
+                                <td id="y1_mice_small_events">12</td>
+                                <td id="y2_mice_small_events">18</td>
+                                <td id="y3_mice_small_events">36</td>
+                                <td id="y4_mice_small_events">36</td>
+                                <td id="y5_mice_small_events">36</td>
+                            </tr>
+                            <tr>
+                                <td>Small Event Attendees Total</td>
+                                <td id="y1_mice_small_attendees">360</td>
+                                <td id="y2_mice_small_attendees">540</td>
+                                <td id="y3_mice_small_attendees">1,080</td>
+                                <td id="y4_mice_small_attendees">1,080</td>
+                                <td id="y5_mice_small_attendees">1,080</td>
+                            </tr>
+                            <tr>
+                                <td>Medium Events</td>
+                                <td id="y1_mice_medium_events">6</td>
+                                <td id="y2_mice_medium_events">9</td>
+                                <td id="y3_mice_medium_events">18</td>
+                                <td id="y4_mice_medium_events">18</td>
+                                <td id="y5_mice_medium_events">18</td>
+                            </tr>
+                            <tr>
+                                <td>Medium Event Attendees Total</td>
+                                <td id="y1_mice_medium_attendees">1,200</td>
+                                <td id="y2_mice_medium_attendees">1,800</td>
+                                <td id="y3_mice_medium_attendees">3,600</td>
+                                <td id="y4_mice_medium_attendees">3,600</td>
+                                <td id="y5_mice_medium_attendees">3,600</td>
+                            </tr>
+                            <tr>
+                                <td>Large Events</td>
+                                <td id="y1_mice_large_events">2</td>
+                                <td id="y2_mice_large_events">3</td>
+                                <td id="y3_mice_large_events">6</td>
+                                <td id="y4_mice_large_events">6</td>
+                                <td id="y5_mice_large_events">6</td>
+                            </tr>
+                            <tr>
+                                <td>Large Event Attendees Total</td>
+                                <td id="y1_mice_large_attendees">1,600</td>
+                                <td id="y2_mice_large_attendees">2,400</td>
+                                <td id="y3_mice_large_attendees">4,800</td>
+                                <td id="y4_mice_large_attendees">4,800</td>
+                                <td id="y5_mice_large_attendees">4,800</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>Total MICE Attendees</td>
+                                <td id="y1_mice_total_attendees">3,160</td>
+                                <td id="y2_mice_total_attendees">4,740</td>
+                                <td id="y3_mice_total_attendees">9,480</td>
+                                <td id="y4_mice_total_attendees">9,480</td>
+                                <td id="y5_mice_total_attendees">9,480</td>
+                            </tr>
+                            <tr>
+                                <td>MICE Event Hours</td>
+                                <td id="y1_mice_hours">12,640</td>
+                                <td id="y2_mice_hours">18,960</td>
+                                <td id="y3_mice_hours">37,920</td>
+                                <td id="y4_mice_hours">37,920</td>
+                                <td id="y5_mice_hours">37,920</td>
+                            </tr>
+                            <tr class="mice-total-row">
+                                <td>MICE Revenue</td>
+                                <td class="positive" id="y1_mice_revenue">$10,471</td>
+                                <td class="positive" id="y2_mice_revenue">$15,706</td>
+                                <td class="positive" id="y3_mice_revenue">$31,412</td>
+                                <td class="positive" id="y4_mice_revenue">$31,412</td>
+                                <td class="positive" id="y5_mice_revenue">$31,412</td>
+                            </tr>
+                            <tr>
+                                <td>MICE Translation Costs</td>
+                                <td class="negative" id="y1_mice_cost_trans">-$9,607</td>
+                                <td class="negative" id="y2_mice_cost_trans">-$14,410</td>
+                                <td class="negative" id="y3_mice_cost_trans">-$28,819</td>
+                                <td class="negative" id="y4_mice_cost_trans">-$28,819</td>
+                                <td class="negative" id="y5_mice_cost_trans">-$28,819</td>
+                            </tr>
+                            <tr>
+                                <td>MICE Twilio Costs</td>
+                                <td class="negative" id="y1_mice_cost_twilio">-$758</td>
+                                <td class="negative" id="y2_mice_cost_twilio">-$1,138</td>
+                                <td class="negative" id="y3_mice_cost_twilio">-$2,275</td>
+                                <td class="negative" id="y4_mice_cost_twilio">-$2,275</td>
+                                <td class="negative" id="y5_mice_cost_twilio">-$2,275</td>
+                            </tr>
+                            <tr>
+                                <td>MICE Organizer Commission (20%)</td>
+                                <td class="negative" id="y1_mice_comm">-$2,094</td>
+                                <td class="negative" id="y2_mice_comm">-$3,141</td>
+                                <td class="negative" id="y3_mice_comm">-$6,282</td>
+                                <td class="negative" id="y4_mice_comm">-$6,282</td>
+                                <td class="negative" id="y5_mice_comm">-$6,282</td>
+                            </tr>
+                            <tr class="mice-total-row">
+                                <td>MICE Variable Costs</td>
+                                <td class="negative" id="y1_mice_var_costs">-$12,459</td>
+                                <td class="negative" id="y2_mice_var_costs">-$18,689</td>
+                                <td class="negative" id="y3_mice_var_costs">-$37,377</td>
+                                <td class="negative" id="y4_mice_var_costs">-$37,377</td>
+                                <td class="negative" id="y5_mice_var_costs">-$37,377</td>
+                            </tr>
+                            <tr>
+                                <td>MICE Contribution Margin</td>
+                                <td class="positive" id="y1_mice_contribution">-$1,988</td>
+                                <td class="positive" id="y2_mice_contribution">-$2,983</td>
+                                <td class="positive" id="y3_mice_contribution">-$5,965</td>
+                                <td class="positive" id="y4_mice_contribution">-$5,965</td>
+                                <td class="positive" id="y5_mice_contribution">-$5,965</td>
+                            </tr>
+
+                            <tr class="section-header">
+                                <td colspan="6">COMBINED OPERATIONS</td>
+                            </tr>
+                            <tr>
+                                <td>Combined Attendees</td>
+                                <td id="y1_combined_attendees">65,040</td>
+                                <td id="y2_combined_attendees">190,380</td>
+                                <td id="y3_combined_attendees">566,400</td>
+                                <td id="y4_combined_attendees">257,000</td>
+                                <td id="y5_combined_attendees">1,680,240</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>Total Revenue</td>
+                                <td class="positive" id="y1_total_revenue">$319,918</td>
+                                <td class="positive" id="y2_total_revenue">$944,379</td>
+                                <td class="positive" id="y3_total_revenue">$2,810,432</td>
+                                <td class="positive" id="y4_total_revenue">$1,266,902</td>
+                                <td class="positive" id="y5_total_revenue">$8,351,235</td>
+                            </tr>
+                            <tr>
+                                <td>Total Variable Costs</td>
+                                <td class="negative" id="y1_total_var_costs">-$103,031</td>
+                                <td class="negative" id="y2_total_var_costs">-$290,474</td>
+                                <td class="negative" id="y3_total_var_costs">-$851
