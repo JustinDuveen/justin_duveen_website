@@ -811,6 +811,93 @@
                 line-height: 1.4;
             }
         }
+
+
+
+        /* Social Proof Section */
+    .social-proof {
+        background: #0f1116; /* Matches the header/slider background */
+        padding: 50px 0;
+        border-bottom: 1px solid #1a2230;
+        position: relative;
+        z-index: 5;
+    }
+
+    .social-proof .container {
+        text-align: center;
+    }
+
+    .social-proof h3 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: #64748b; /* Muted gray */
+        margin-bottom: 2rem;
+        font-weight: 600;
+    }
+
+    .logos {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 4rem;
+        margin-bottom: 2.5rem;
+        flex-wrap: wrap;
+    }
+
+    .logos img {
+        height: 35px; /* Restricts height so logos align */
+        width: auto;
+        opacity: 0.4;
+        filter: grayscale(100%) brightness(1.2); /* Makes them subtle */
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    /* Hover effect: Glow up */
+    .logos img:hover {
+        opacity: 1;
+        filter: grayscale(0%) drop-shadow(0 0 8px rgba(0, 255, 255, 0.5));
+    }
+
+    .quote {
+        font-size: 1.2rem;
+        font-weight: 400;
+        font-style: italic;
+        color: #cfd8e3;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.6;
+        position: relative;
+    }
+
+    /* Optional: Add decorative quote marks */
+    .quote::before {
+        content: "“";
+        font-size: 4rem;
+        color: #1a2230;
+        position: absolute;
+        top: -20px;
+        left: -40px;
+        font-family: serif;
+        z-index: -1;
+    }
+
+    /* Mobile Responsiveness for Social Proof */
+    @media (max-width: 768px) {
+        .logos {
+            gap: 2rem;
+        }
+        
+        .logos img {
+            height: 25px;
+        }
+
+        .quote {
+            font-size: 1rem;
+            padding: 0 15px;
+        }
+    }
     </style>
 </head>
 <body>
@@ -820,7 +907,7 @@
                 <div class="hero-text">
                     <div class="hero-brand">Virtual<span class="hero-brand-domain">AIWorkforce.com</span></div>
                     <h1>A Category-Defining Domain for the $3T Enterprise AI Revolution</h1>
-                    <p class="hero-subtitle">VirtualAIWorkforce.com isn't just a domain - it's the narrative that will determine which companies lead the next decade of enterprise value creation.</p>
+                    <p class="hero-subtitle">VirtualAIWorkforce.com: The definitive digital asset for the AI Workforce revolution. Own the category narrative before it's claimed.</p>
                     <a href="#contact" class="cta-button">Secure Category Leadership</a>
                 </div>
                 <div class="hero-image-container">
@@ -832,11 +919,20 @@
         </div>
     </section>
 
+
+        <section class="social-proof">
+        <div class="container">
+            <p class="quote">"The shift from AI tools to AI workforces represents the most significant enterprise transformation since cloud computing." <br><span class="quote-author">— McKinsey Industry Analyst Report, 2025</span></p>
+        </div>
+    </section>
+
+
+
     <!-- New Slider Section -->
     <section class="slider-section">
         <div class="slider-container">
             <h2 class="slider-title">Own and Define the Future of Enterprise AI</h2>
-            <p class="strategic-reasons-subtitle">Why owning the VirtualAIWorkforce.com domain puts you ahead of your competition:</p>
+            <p class="strategic-reasons-subtitle">A strategic asset for category leadership in enterprise AI:</p>
             <div class="slider-track">
             <div class="slider-item">
                 <div class="slider-icon">🧬</div>
@@ -926,7 +1022,7 @@
 
     <section class="strategic-value">
         <div class="container">
-            <h2 class="section-title">Why This Domain Asset Commands Seven Figures</h2>
+            <h2 class="section-title">The Strategic Value of Category Leadership</h2>
             <div class="value-grid">
                 <div class="value-item">
                     <div class="value-number">$3T+</div>
@@ -975,7 +1071,7 @@
                 <div class="company-card">
                     <div class="company-logo openai">OPENAI</div>
                     <h4>Models → Managed Workforce</h4>
-                    <p>Expand beyond API access to offering fully managed AI workforces — turning model capabilities into turnkey enterprise solutions.</p>
+                    <p>Expand beyond API access to offering fully managed AI workforces - turning model capabilities into turnkey enterprise solutions.</p>
                     <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: new revenue streams, enterprise account expansion, competitive moat against open-source.</p>
                 </div>
 
@@ -989,7 +1085,7 @@
                 <div class="company-card">
                     <div class="company-logo salesforce">SALESFORCE</div>
                     <h4>Agentforce Brand Acceleration</h4>
-                    <p>Use the domain to instantly legitimize a global "Agentforce" offering — shortening adoption cycles for CRM + workforce automation bundles.</p>
+                    <p>Use the domain to instantly legitimize a global "Agentforce" offering - shortening adoption cycles for CRM + workforce automation bundles.</p>
                     <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: category PR, expanded partner pipelines, higher deal ARR.</p>
                 </div>
             </div>
@@ -998,7 +1094,7 @@
 
     <section class="final-cta" id="contact">
     <div class="container">
-        <h2>The Category Is Unclaimed.<br>For Now.</h2>
+        <h2>Available for <br>Strategic Acquisition</h2>
         <p style="font-size: 1.2rem; margin-bottom: 3rem; opacity: 0.9;">
             We are currently in confidential discussions with select category leaders.<br>
             Serious inquiries only from C-level executives or corporate development.
