@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -115,8 +116,15 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
         }
 
         .hero-image-wrapper::before {
@@ -302,6 +310,7 @@
             0% {
                 transform: translateX(0);
             }
+
             100% {
                 transform: translateX(calc(-300px * 6 - 2rem * 6));
             }
@@ -815,91 +824,96 @@
 
 
         /* Social Proof Section */
-    .social-proof {
-        background: #0f1116; /* Matches the header/slider background */
-        padding: 50px 0;
-        border-bottom: 1px solid #1a2230;
-        position: relative;
-        z-index: 5;
-    }
-
-    .social-proof .container {
-        text-align: center;
-    }
-
-    .social-proof h3 {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 3px;
-        color: #64748b; /* Muted gray */
-        margin-bottom: 2rem;
-        font-weight: 600;
-    }
-
-    .logos {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 4rem;
-        margin-bottom: 2.5rem;
-        flex-wrap: wrap;
-    }
-
-    .logos img {
-        height: 35px; /* Restricts height so logos align */
-        width: auto;
-        opacity: 0.4;
-        filter: grayscale(100%) brightness(1.2); /* Makes them subtle */
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    /* Hover effect: Glow up */
-    .logos img:hover {
-        opacity: 1;
-        filter: grayscale(0%) drop-shadow(0 0 8px rgba(0, 255, 255, 0.5));
-    }
-
-    .quote {
-        font-size: 1.2rem;
-        font-weight: 400;
-        font-style: italic;
-        color: #cfd8e3;
-        max-width: 800px;
-        margin: 0 auto;
-        line-height: 1.6;
-        position: relative;
-    }
-
-    /* Optional: Add decorative quote marks */
-    .quote::before {
-        content: "“";
-        font-size: 4rem;
-        color: #1a2230;
-        position: absolute;
-        top: -20px;
-        left: -40px;
-        font-family: serif;
-        z-index: -1;
-    }
-
-    /* Mobile Responsiveness for Social Proof */
-    @media (max-width: 768px) {
-        .logos {
-            gap: 2rem;
+        .social-proof {
+            background: #0f1116;
+            /* Matches the header/slider background */
+            padding: 50px 0;
+            border-bottom: 1px solid #1a2230;
+            position: relative;
+            z-index: 5;
         }
-        
+
+        .social-proof .container {
+            text-align: center;
+        }
+
+        .social-proof h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #64748b;
+            /* Muted gray */
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4rem;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+        }
+
         .logos img {
-            height: 25px;
+            height: 35px;
+            /* Restricts height so logos align */
+            width: auto;
+            opacity: 0.4;
+            filter: grayscale(100%) brightness(1.2);
+            /* Makes them subtle */
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        /* Hover effect: Glow up */
+        .logos img:hover {
+            opacity: 1;
+            filter: grayscale(0%) drop-shadow(0 0 8px rgba(0, 255, 255, 0.5));
         }
 
         .quote {
-            font-size: 1rem;
-            padding: 0 15px;
+            font-size: 1.2rem;
+            font-weight: 400;
+            font-style: italic;
+            color: #cfd8e3;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+            position: relative;
         }
-    }
+
+        /* Optional: Add decorative quote marks */
+        .quote::before {
+            content: "“";
+            font-size: 4rem;
+            color: #1a2230;
+            position: absolute;
+            top: -20px;
+            left: -40px;
+            font-family: serif;
+            z-index: -1;
+        }
+
+        /* Mobile Responsiveness for Social Proof */
+        @media (max-width: 768px) {
+            .logos {
+                gap: 2rem;
+            }
+
+            .logos img {
+                height: 25px;
+            }
+
+            .quote {
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+        }
     </style>
 </head>
+
 <body>
     <section class="hero">
         <div class="container">
@@ -907,12 +921,15 @@
                 <div class="hero-text">
                     <div class="hero-brand">Virtual<span class="hero-brand-domain">AIWorkforce.com</span></div>
                     <h1>A Category-Defining Domain for the AI Workforce Era</h1>
-                    <p class="hero-subtitle">VirtualAIWorkforce.com: The definitive digital asset for the AI Workforce revolution. Own the category narrative before it's claimed.</p>
-                    <a href="#contact" class="cta-button">Secure Category Leadership</a>
+                    <p class="hero-subtitle">VirtualAIWorkforce.com: The definitive digital asset for the AI Workforce
+                        revolution. Own the category narrative before it's claimed.</p>
+                    <a href="#social-proof" class="cta-button">Secure Category Leadership</a>
                 </div>
                 <div class="hero-image-container">
                     <div class="hero-image-wrapper">
-                        <img src="images/virtualaiworkforce.jpg" alt="Virtual AI Workforce - Three AI robots working with holographic data interfaces" loading="eager">
+                        <img src="images/virtualaiworkforce.jpg"
+                            alt="Virtual AI Workforce - Three AI robots working with holographic data interfaces"
+                            loading="eager">
                     </div>
                 </div>
             </div>
@@ -920,9 +937,11 @@
     </section>
 
 
-        <section class="social-proof">
+    <section class="social-proof" id="social-proof">
         <div class="container">
-            <p class="quote">"The shift from AI tools to AI workforces represents the most significant enterprise transformation since cloud computing." <br><span class="quote-author">— McKinsey Industry Analyst Report, 2025</span></p>
+            <p class="quote">"The shift from AI tools to AI workforces represents the most significant enterprise
+                transformation since cloud computing." <br><span class="quote-author">— McKinsey Industry Analyst
+                    Report, 2025</span></p>
         </div>
     </section>
 
@@ -934,87 +953,98 @@
             <h2 class="slider-title">Own and Define the Future of Enterprise AI</h2>
             <p class="strategic-reasons-subtitle">A strategic asset for category leadership in enterprise AI:</p>
             <div class="slider-track">
-            <div class="slider-item">
-                <div class="slider-icon">🧬</div>
-                <h3>The Next Corporate Workforce</h3>
-                <p>AI agents that hire, learn, collaborate and deliver - redefining headcount, cost and scale.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">🌐</div>
-                <h3>From Software to Workforce</h3>
-                <p>Enterprises will no longer license tools - they’ll deploy intelligent digital workforces across every function.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">🏢</div>
-                <h3>The New Enterprise Operating System</h3>
-                <p>Interconnected AI workers executing sales, operations, finance and support autonomously.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">⚙️</div>
-                <h3>Infrastructure Meets Intelligence</h3>
-                <p>NVIDIA, UiPath, Microsoft and AWS are racing to host, orchestrate and secure virtual AI workforces.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">💡</div>
-                <h3>The Category That Names the Movement</h3>
-                <p>“Virtual AI Workforce” isn’t a concept - it’s the headline that will define the enterprise AI decade.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">📈</div>
-                <h3>Strategic Narrative Control</h3>
-                <p>Owning "VirtualAIWorkforce.com" means owning the language, perception and category definition that shapes capital flows.</p>
-            </div>
+                <div class="slider-item">
+                    <div class="slider-icon">🧬</div>
+                    <h3>The Next Corporate Workforce</h3>
+                    <p>AI agents that hire, learn, collaborate and deliver - redefining headcount, cost and scale.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">🌐</div>
+                    <h3>From Software to Workforce</h3>
+                    <p>Enterprises will no longer license tools - they’ll deploy intelligent digital workforces across
+                        every function.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">🏢</div>
+                    <h3>The New Enterprise Operating System</h3>
+                    <p>Interconnected AI workers executing sales, operations, finance and support autonomously.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">⚙️</div>
+                    <h3>Infrastructure Meets Intelligence</h3>
+                    <p>NVIDIA, UiPath, Microsoft and AWS are racing to host, orchestrate and secure virtual AI
+                        workforces.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">💡</div>
+                    <h3>The Category That Names the Movement</h3>
+                    <p>“Virtual AI Workforce” isn’t a concept - it’s the headline that will define the enterprise AI
+                        decade.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">📈</div>
+                    <h3>Strategic Narrative Control</h3>
+                    <p>Owning "VirtualAIWorkforce.com" means owning the language, perception and category definition
+                        that shapes capital flows.</p>
+                </div>
 
-            <!-- Repeat for seamless loop -->
-            <div class="slider-item">
-                <div class="slider-icon">🧬</div>
-                <h3>The Next Corporate Workforce</h3>
-                <p>AI agents that hire, learn, collaborate and deliver - redefining headcount, cost and scale.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">🌐</div>
-                <h3>From Software to Workforce</h3>
-                <p>Enterprises will no longer license tools - they’ll deploy intelligent digital workforces across every function.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">🏢</div>
-                <h3>The New Enterprise Operating System</h3>
-                <p>Interconnected AI workers executing sales, operations, finance and support autonomously.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">⚙️</div>
-                <h3>Infrastructure Meets Intelligence</h3>
-                <p>NVIDIA, Microsoft and AWS are racing to host, orchestrate and secure virtual AI workforces.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">💡</div>
-                <h3>The Category That Names the Movement</h3>
-                <p>“Virtual AI Workforce” isn’t a concept - it’s the headline that will define the enterprise AI decade.</p>
-            </div>
-            <div class="slider-item">
-                <div class="slider-icon">📈</div>
-                <h3>Strategic Narrative Control</h3>
-                <p>Owning this name means owning the language, perception and category definition that shapes capital flows.</p>
-            </div>
+                <!-- Repeat for seamless loop -->
+                <div class="slider-item">
+                    <div class="slider-icon">🧬</div>
+                    <h3>The Next Corporate Workforce</h3>
+                    <p>AI agents that hire, learn, collaborate and deliver - redefining headcount, cost and scale.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">🌐</div>
+                    <h3>From Software to Workforce</h3>
+                    <p>Enterprises will no longer license tools - they’ll deploy intelligent digital workforces across
+                        every function.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">🏢</div>
+                    <h3>The New Enterprise Operating System</h3>
+                    <p>Interconnected AI workers executing sales, operations, finance and support autonomously.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">⚙️</div>
+                    <h3>Infrastructure Meets Intelligence</h3>
+                    <p>NVIDIA, Microsoft and AWS are racing to host, orchestrate and secure virtual AI workforces.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">💡</div>
+                    <h3>The Category That Names the Movement</h3>
+                    <p>“Virtual AI Workforce” isn’t a concept - it’s the headline that will define the enterprise AI
+                        decade.</p>
+                </div>
+                <div class="slider-item">
+                    <div class="slider-icon">📈</div>
+                    <h3>Strategic Narrative Control</h3>
+                    <p>Owning this name means owning the language, perception and category definition that shapes
+                        capital flows.</p>
+                </div>
             </div>
         </div>
-        </section>
+    </section>
 
     <section class="manifesto">
         <div class="container">
-            <h2 class="section-title">Virtual AI Workforce - <span class="gradient-text">Where AI Becomes the Future of Work</span></h2>
+            <h2 class="section-title">Virtual AI Workforce - <span class="gradient-text">Where AI Becomes the Future of
+                    Work</span></h2>
             <div class="manifesto-grid">
                 <div class="manifesto-card">
                     <h3>From Tools to Workers</h3>
-                    <p>The paradigm shift from AI assistants that help human workers to autonomous AI agents that form the workforce itself.</p>
+                    <p>The paradigm shift from AI assistants that help human workers to autonomous AI agents that form
+                        the workforce itself.</p>
                 </div>
                 <div class="manifesto-card">
                     <h3>Category Sovereignty</h3>
-                    <p>Whoever owns "Virtual AI Workforce" owns the narrative for the next era of enterprise computing.</p>
+                    <p>Whoever owns "Virtual AI Workforce" owns the narrative for the next era of enterprise computing.
+                    </p>
                 </div>
                 <div class="manifesto-card">
                     <h3>Strategic Imperative</h3>
-                    <p>This isn't about marketing - it's about defining the competitive landscape for the AI-powered enterprise.</p>
+                    <p>This isn't about marketing - it's about defining the competitive landscape for the AI-powered
+                        enterprise.</p>
                 </div>
             </div>
         </div>
@@ -1037,7 +1067,8 @@
                 <div class="value-item">
                     <div class="value-number">6-18</div>
                     <div class="value-title">Month Window</div>
-                    <p>The brief period between technological feasibility and mass market awareness to own this category</p>
+                    <p>The brief period between technological feasibility and mass market awareness to own this category
+                    </p>
                 </div>
             </div>
         </div>
@@ -1050,74 +1081,88 @@
                 <div class="company-card">
                     <div class="company-logo microsoft">MICROSOFT</div>
                     <h4>Copilot → Workforce Orchestration</h4>
-                    <p>Extend Copilot from individual productivity to an enterprise orchestration layer for multi-agent workflows.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: stronger platform narrative, reduced churn, premium enterprise positioning.</p>
+                    <p>Extend Copilot from individual productivity to an enterprise orchestration layer for multi-agent
+                        workflows.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: stronger platform
+                        narrative, reduced churn, premium enterprise positioning.</p>
                 </div>
 
                 <div class="company-card">
                     <div class="company-logo nvidia">NVIDIA</div>
                     <h4>Move Up the Stack</h4>
-                    <p>Position Nvidia not just as infrastructure but as the infrastructure for productive, managed AI workforces.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: premium differentiation for OEMs, new enterprise demand signals.</p>
+                    <p>Position Nvidia not just as infrastructure but as the infrastructure for productive, managed AI
+                        workforces.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: premium
+                        differentiation for OEMs, new enterprise demand signals.</p>
                 </div>
 
                 <div class="company-card">
                     <div class="company-logo uipath">UIPATH</div>
                     <h4>RPA → Autonomous Workforce</h4>
-                    <p>Accelerate UiPath's evolution from task automation to workforce orchestration, protecting legacy revenues and opening new revenue layers.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: defend market share, lead category messaging.</p>
+                    <p>Accelerate UiPath's evolution from task automation to workforce orchestration, protecting legacy
+                        revenues and opening new revenue layers.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: defend market share,
+                        lead category messaging.</p>
                 </div>
 
                 <div class="company-card">
                     <div class="company-logo openai">OPENAI</div>
                     <h4>Models → Managed Workforce</h4>
-                    <p>Expand beyond API access to offering fully managed AI workforces - turning model capabilities into turnkey enterprise solutions.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: new revenue streams, enterprise account expansion, competitive moat against open-source.</p>
+                    <p>Expand beyond API access to offering fully managed AI workforces - turning model capabilities
+                        into turnkey enterprise solutions.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: new revenue streams,
+                        enterprise account expansion, competitive moat against open-source.</p>
                 </div>
 
                 <div class="company-card">
                     <div class="company-logo anthropic">ANTHROPIC</div>
                     <h4>Constitutional AI at Workforce Scale</h4>
-                    <p>Position Claude's constitutional AI framework as the safety standard for enterprise AI workforce deployment and governance.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: enterprise trust differentiation, compliance-ready positioning, premium pricing power.</p>
+                    <p>Position Claude's constitutional AI framework as the safety standard for enterprise AI workforce
+                        deployment and governance.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: enterprise trust
+                        differentiation, compliance-ready positioning, premium pricing power.</p>
                 </div>
 
                 <div class="company-card">
                     <div class="company-logo salesforce">SALESFORCE</div>
                     <h4>Agentforce Brand Acceleration</h4>
-                    <p>Use the domain to instantly legitimize a global "Agentforce" offering - shortening adoption cycles for CRM + workforce automation bundles.</p>
-                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: category PR, expanded partner pipelines, higher deal ARR.</p>
+                    <p>Use the domain to instantly legitimize a global "Agentforce" offering - shortening adoption
+                        cycles for CRM + workforce automation bundles.</p>
+                    <p style="color:#bfc7d2; font-weight:600; margin-top:0.6rem;">Immediate value: category PR, expanded
+                        partner pipelines, higher deal ARR.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <section class="final-cta" id="contact">
-    <div class="container">
-        <h2>Available for <br>Strategic Acquisition</h2>
-        <p style="font-size: 1.2rem; margin-bottom: 3rem; opacity: 0.9;">
-            We are currently in confidential discussions with select category leaders.<br>
-            Serious inquiries only from C-level executives or corporate development.
-        </p>
-        <div>
-            <a href="mailto:justinduveen@virtualaiworkforce.com?subject=VirtualAIWorkforce.com Strategic Domain Inquiry" class="cta-button">Executive Inquiry</a>
-            <a href="/confidential-briefing.html" class="cta-button secondary-cta" style="background: transparent; border: 2px solid #00ffe0; color: #00ffe0; margin-left: 1rem;">
-                Access Confidential Briefing
-            </a>
-        </div>
-    </div>
-</section>
-
-<footer>
-    <div class="container">
-        <div class="footer-content">
-            <div class="footer-logo">
-                <div class="footer-logo-main">Virtual<span class="footer-logo-domain">AIWorkforce.com</span></div>
-                <div class="footer-logo-sub">The Definitive Category Asset for Enterprise AI</div>
+        <div class="container">
+            <h2>Available for <br>Strategic Acquisition</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 3rem; opacity: 0.9;">
+                We are currently in confidential discussions with select category leaders.<br>
+                Serious inquiries only from C-level executives or corporate development.
+            </p>
+            <div>
+                <a href="mailto:justinduveen@virtualaiworkforce.com?subject=VirtualAIWorkforce.com Strategic Domain Inquiry"
+                    class="cta-button">Executive Inquiry</a>
+                <a href="/confidential-briefing.html" class="cta-button secondary-cta"
+                    style="background: transparent; border: 2px solid #00ffe0; color: #00ffe0; margin-left: 1rem;">
+                    Access Confidential Briefing
+                </a>
             </div>
         </div>
-    </div>
-</footer>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <div class="footer-logo-main">Virtual<span class="footer-logo-domain">AIWorkforce.com</span></div>
+                    <div class="footer-logo-sub">The Definitive Category Asset for Enterprise AI</div>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script>
         // Smooth scrolling for anchor links
@@ -1135,4 +1180,5 @@
         });
     </script>
 </body>
+
 </html>
