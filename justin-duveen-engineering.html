@@ -957,93 +957,6 @@
         display: none;
       }
 
-      /* Mobile hamburger menu button */
-      .nav-toggle {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 5px;
-        width: 32px;
-        height: 32px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        z-index: 100;
-      }
-
-      .nav-toggle span {
-        display: block;
-        width: 100%;
-        height: 2px;
-        background: var(--text);
-        border-radius: 2px;
-        transition: all 0.3s ease;
-      }
-
-      .nav-toggle.active span:nth-child(1) {
-        transform: rotate(45deg) translate(5px, 5px);
-      }
-
-      .nav-toggle.active span:nth-child(2) {
-        opacity: 0;
-      }
-
-      .nav-toggle.active span:nth-child(3) {
-        transform: rotate(-45deg) translate(5px, -5px);
-      }
-
-      /* Mobile menu overlay */
-      .mobile-menu {
-        display: none;
-        position: fixed;
-        top: 72px;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(7,7,7,0.98);
-        backdrop-filter: blur(20px);
-        padding: 40px 24px;
-        flex-direction: column;
-        gap: 0;
-        z-index: 50;
-        overflow-y: auto;
-      }
-
-      .mobile-menu.active {
-        display: flex;
-      }
-
-      .mobile-menu a {
-        display: block;
-        color: var(--text);
-        font-size: 18px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        padding: 18px 0;
-        border-bottom: 1px solid var(--line);
-        transition: color 0.2s ease, padding-left 0.2s ease;
-      }
-
-      .mobile-menu a:hover {
-        color: var(--accent);
-        padding-left: 8px;
-      }
-
-      .mobile-menu .mobile-availability {
-        margin-top: 24px;
-        padding: 14px 18px;
-        display: inline-flex;
-        align-self: flex-start;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-        color: var(--green);
-        border: 1px solid rgba(83,211,139,0.22);
-        border-radius: 999px;
-        background: rgba(83,211,139,0.06);
-      }
-
       .section-head,
       .system-top,
       .footer-inner {
@@ -1089,24 +1002,6 @@
       </ul>
 
       <div class="availability mono">Open to Roles</div>
-
-      <!-- Mobile toggle button -->
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-
-      <!-- Mobile menu -->
-      <div class="mobile-menu">
-        <a href="#systems">Systems</a>
-        <a href="#deep-dives">Deep Dives</a>
-        <a href="#principles">Principles</a>
-        <a href="#stack">Stack</a>
-        <a href="#proof">Code Proof</a>
-        <a href="mailto:justinduveen@virtualaiworkforce.com?subject=AI Development Enquiry">Contact</a>
-        <div class="mobile-availability mono">Open to Roles</div>
-      </div>
     </div>
   </nav>
 
@@ -2137,40 +2032,6 @@ Refund on failure</div>
       }, { threshold: 0.2 });
 
       heroTerminalObserver.observe(heroTerminal);
-    }
-
-    // Mobile menu toggle
-    const navToggle = document.querySelector('.nav-toggle');
-    const mobileMenu = document.querySelector('.mobile-menu');
-
-    if (navToggle && mobileMenu) {
-      navToggle.addEventListener('click', function() {
-        const isActive = mobileMenu.classList.contains('active');
-        mobileMenu.classList.toggle('active');
-        navToggle.classList.toggle('active');
-        navToggle.setAttribute('aria-expanded', !isActive);
-        document.body.style.overflow = isActive ? '' : 'hidden';
-      });
-
-      // Close menu when clicking a link
-      mobileMenu.querySelectorAll('a').forEach(function(link) {
-        link.addEventListener('click', function() {
-          mobileMenu.classList.remove('active');
-          navToggle.classList.remove('active');
-          navToggle.setAttribute('aria-expanded', 'false');
-          document.body.style.overflow = '';
-        });
-      });
-
-      // Close menu on escape key
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
-          mobileMenu.classList.remove('active');
-          navToggle.classList.remove('active');
-          navToggle.setAttribute('aria-expanded', 'false');
-          document.body.style.overflow = '';
-        }
-      });
     }
   </script>
 </body>
