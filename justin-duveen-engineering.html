@@ -1,19 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Justin Duveen — Founding AI Engineer | AI Systems Architect</title>
-  <meta
-    name="description"
-    content="Founding AI Engineer and AI Systems Architect. Production AI systems across real-time voice, multimodal inference and multi-model decision pipelines."
-  />
+  <meta name="description"
+    content="Founding AI Engineer and AI Systems Architect. Production AI systems across real-time voice, multimodal inference and multi-model decision pipelines." />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://justinduveen.com/" />
+  <meta property="og:title" content="Justin Duveen — Founding AI Engineer | AI Systems Architect" />
+  <meta property="og:description"
+    content="Building production-grade AI systems with focus on reliability, latency, and commercial viability." />
+  <meta property="og:image" content="https://justinduveen.com/og-image.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://justinduveen.com/" />
+  <meta property="twitter:title" content="Justin Duveen — Founding AI Engineer | AI Systems Architect" />
+  <meta property="twitter:description"
+    content="Building production-grade AI systems with focus on reliability, latency, and commercial viability." />
+  <meta property="twitter:image" content="https://justinduveen.com/og-image.jpg" />
+
+  <!-- Person Schema -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Justin Duveen",
+      "jobTitle": "Founding AI Engineer & AI Systems Architect",
+      "description": "Founding AI Engineer and AI Systems Architect specializing in production AI systems, real-time voice, and multimodal inference pipelines.",
+      "url": "https://justinduveen.com",
+      "sameAs": [
+        "https://linkedin.com/in/justin-duveen",
+        "https://github.com/JustinDuveen/justin_duveen_website"
+      ],
+      "knowsAbout": [
+        "Artificial Intelligence",
+        "AI Systems Architecture",
+        "Real-time Voice AI",
+        "WebRTC",
+        "Multimodal Inference"
+      ]
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
-    rel="stylesheet"
-  />
+    rel="stylesheet" />
   <style>
     .hero-mini-profile {
       display: inline-flex;
@@ -23,7 +60,7 @@
       padding: 6px 10px 6px 6px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .hero-mini-photo {
@@ -41,6 +78,7 @@
       font-weight: 600;
       letter-spacing: 0.01em;
     }
+
     :root {
       --bg: #070707;
       --bg-soft: #0d0d0d;
@@ -50,7 +88,7 @@
       --line-strong: rgba(255, 187, 92, 0.34);
       --text: #f6f6f6;
       --text-soft: rgba(246, 246, 246, 0.84);
-      --text-muted: rgba(246, 246, 246, 0.58);
+      --text-muted: rgba(246, 246, 246, 0.65);
       --accent: #ffbb5c;
       --accent-soft: rgba(255, 187, 92, 0.1);
       --green: #53d38b;
@@ -61,11 +99,19 @@
       --radius: 18px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       background:
-        radial-gradient(circle at top right, rgba(255,187,92,0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(255, 187, 92, 0.08), transparent 28%),
         linear-gradient(180deg, #080808 0%, #050505 100%);
       color: var(--text);
       font-family: "Inter", system-ui, sans-serif;
@@ -80,15 +126,50 @@
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
       background-size: 56px 56px;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 85%);
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .55), transparent 85%);
       z-index: 0;
     }
 
-    a { color: inherit; text-decoration: none; }
-    img { max-width: 100%; display: block; }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Focus States */
+    a:focus-visible,
+    button:focus-visible,
+    [role="button"]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+
+    /* Skip Link */
+    .skip-link {
+      position: absolute;
+      top: -100px;
+      left: 20px;
+      background: var(--accent);
+      color: #000;
+      padding: 12px 20px;
+      z-index: 1000;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: 0 0 8px 8px;
+      transition: top 0.2s ease;
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
 
     .container {
       width: min(var(--max), calc(100vw - 36px));
@@ -109,7 +190,7 @@
       padding: 8px 12px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
       color: var(--text-muted);
       font-size: 12px;
       line-height: 1;
@@ -122,13 +203,20 @@
       height: 8px;
       border-radius: 50%;
       background: var(--green);
-      box-shadow: 0 0 0 0 rgba(83,211,139,0.45);
+      box-shadow: 0 0 0 0 rgba(83, 211, 139, 0.45);
       animation: pulse 2s infinite;
     }
 
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(83,211,139,0.45); }
-      60% { box-shadow: 0 0 0 8px rgba(83,211,139,0); }
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(83, 211, 139, 0.45);
+      }
+
+      60% {
+        box-shadow: 0 0 0 8px rgba(83, 211, 139, 0);
+      }
     }
 
     nav {
@@ -136,7 +224,7 @@
       top: 0;
       z-index: 30;
       backdrop-filter: blur(16px);
-      background: rgba(7,7,7,0.84);
+      background: rgba(7, 7, 7, 0.84);
       border-bottom: 1px solid var(--line);
     }
 
@@ -182,9 +270,13 @@
       transition: .18s ease;
     }
 
-    .nav-links a:hover { color: var(--accent); }
+    .nav-links a:hover {
+      color: var(--accent);
+    }
 
-    .nav-toggle { display: none; }
+    .nav-toggle {
+      display: none;
+    }
 
     .availability {
       display: inline-flex;
@@ -194,13 +286,15 @@
       text-transform: uppercase;
       letter-spacing: 0.14em;
       color: var(--green);
-      border: 1px solid rgba(83,211,139,0.22);
+      border: 1px solid rgba(83, 211, 139, 0.22);
       padding: 9px 12px;
       border-radius: 999px;
-      background: rgba(83,211,139,0.06);
+      background: rgba(83, 211, 139, 0.06);
     }
 
-    section { padding: 88px 0; }
+    section {
+      padding: 88px 0;
+    }
 
     .section-head {
       display: flex;
@@ -220,7 +314,10 @@
       margin-bottom: 10px;
     }
 
-    h1, h2, h3, h4 {
+    h1,
+    h2,
+    h3,
+    h4 {
       line-height: 1.05;
       letter-spacing: -0.04em;
     }
@@ -272,7 +369,7 @@
     .hero-shift {
       margin-top: 18px;
       padding: 18px 20px;
-      background: linear-gradient(180deg, rgba(255,187,92,0.08), rgba(255,255,255,0.02));
+      background: linear-gradient(180deg, rgba(255, 187, 92, 0.08), rgba(255, 255, 255, 0.02));
       border: 1px solid var(--line);
       border-radius: 16px;
     }
@@ -302,10 +399,12 @@
       gap: 12px;
       align-items: start;
       padding: 14px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .proof-item:last-child { border-bottom: 0; }
+    .proof-item:last-child {
+      border-bottom: 0;
+    }
 
     .proof-item .marker {
       color: var(--accent);
@@ -348,19 +447,19 @@
     .btn-secondary {
       border-color: var(--line);
       color: var(--text);
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .btn-secondary:hover {
       border-color: var(--line-strong);
-      background: rgba(255,255,255,0.04);
+      background: rgba(255, 255, 255, 0.04);
     }
 
     .hero-panel {
       border: 1px solid var(--line);
       border-radius: 22px;
       background:
-        linear-gradient(180deg, rgba(255,187,92,0.08), rgba(255,255,255,0.02)),
+        linear-gradient(180deg, rgba(255, 187, 92, 0.08), rgba(255, 255, 255, 0.02)),
         var(--card);
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -373,8 +472,8 @@
       justify-content: space-between;
       gap: 16px;
       padding: 0 18px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .dots {
@@ -388,9 +487,17 @@
       border-radius: 50%;
     }
 
-    .dot:nth-child(1) { background: #ff5f57; }
-    .dot:nth-child(2) { background: #febc2e; }
-    .dot:nth-child(3) { background: #28c840; }
+    .dot:nth-child(1) {
+      background: #ff5f57;
+    }
+
+    .dot:nth-child(2) {
+      background: #febc2e;
+    }
+
+    .dot:nth-child(3) {
+      background: #28c840;
+    }
 
     .panel-title {
       color: var(--text-muted);
@@ -409,7 +516,7 @@
       flex-direction: column;
       min-height: 500px;
       background:
-        radial-gradient(circle at top right, rgba(255,187,92,0.06), transparent 24%),
+        radial-gradient(circle at top right, rgba(255, 187, 92, 0.06), transparent 24%),
         #0d0d0d;
     }
 
@@ -455,9 +562,9 @@
     }
 
     .term-avatar.ai {
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .term-bubble-wrap {
@@ -474,8 +581,8 @@
     }
 
     .term-bubble {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
       color: var(--text-soft);
       padding: 12px 14px;
       border-radius: 6px 14px 14px 14px;
@@ -484,16 +591,16 @@
     }
 
     .term-bubble.user {
-      background: rgba(255,187,92,0.08);
-      border: 1px solid rgba(255,187,92,0.18);
+      background: rgba(255, 187, 92, 0.08);
+      border: 1px solid rgba(255, 187, 92, 0.18);
       color: var(--text);
       border-radius: 14px 6px 14px 14px;
     }
 
     .term-output {
       margin-top: 8px;
-      background: rgba(0,0,0,0.34);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0, 0, 0, 0.34);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 10px;
       padding: 12px 13px;
       font-size: 12px;
@@ -515,8 +622,8 @@
       gap: 6px;
       align-items: center;
       padding: 11px 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
       border-radius: 6px 14px 14px 14px;
     }
 
@@ -537,19 +644,29 @@
     }
 
     @keyframes terminalBounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: .55; }
-      40% { transform: translateY(-4px); opacity: 1; }
+
+      0%,
+      80%,
+      100% {
+        transform: translateY(0);
+        opacity: .55;
+      }
+
+      40% {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
     }
 
     .terminal-input {
       min-height: 54px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 0 16px;
       color: var(--text-soft);
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
       font-size: 12px;
       overflow: hidden;
       white-space: nowrap;
@@ -572,8 +689,15 @@
     }
 
     @keyframes blinkCursor {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
     }
 
     .stats-grid {
@@ -584,7 +708,7 @@
 
     .stat-card {
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
       border-radius: 18px;
       padding: 20px;
     }
@@ -617,7 +741,7 @@
 
     .system-card {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.015));
       border-radius: 22px;
       overflow: hidden;
     }
@@ -628,7 +752,7 @@
       justify-content: space-between;
       gap: 20px;
       align-items: start;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .system-title-wrap {
@@ -653,8 +777,8 @@
       align-items: center;
       padding: 7px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
       color: var(--text-muted);
       font-size: 11px;
       text-transform: uppercase;
@@ -663,14 +787,14 @@
 
     .tag.live {
       color: var(--green);
-      border-color: rgba(83,211,139,0.18);
-      background: rgba(83,211,139,0.07);
+      border-color: rgba(83, 211, 139, 0.18);
+      background: rgba(83, 211, 139, 0.07);
     }
 
     .tag.building {
       color: var(--blue);
-      border-color: rgba(110,168,255,0.18);
-      background: rgba(110,168,255,0.08);
+      border-color: rgba(110, 168, 255, 0.18);
+      background: rgba(110, 168, 255, 0.08);
     }
 
     .system-body {
@@ -681,8 +805,8 @@
     }
 
     .mini-card {
-      border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.025);
       border-radius: 16px;
       padding: 18px;
     }
@@ -732,14 +856,14 @@
     .stack span {
       padding: 7px 10px;
       border-radius: 999px;
-      background: rgba(255,187,92,0.08);
-      border: 1px solid rgba(255,187,92,0.16);
+      background: rgba(255, 187, 92, 0.08);
+      border: 1px solid rgba(255, 187, 92, 0.16);
       color: var(--accent);
       font-size: 12px;
     }
 
     .diagram-box {
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       background: #0f0f0f;
       border-radius: 16px;
       padding: 16px;
@@ -759,21 +883,41 @@
       gap: 18px;
     }
 
-    .deep-dive-grid { grid-template-columns: repeat(3, 1fr); }
-    .case-grid { grid-template-columns: repeat(3, 1fr); }
-    .decision-grid { grid-template-columns: repeat(2, 1fr); }
-    .resume-grid { grid-template-columns: 0.95fr 1.05fr; }
-    .contact-grid { grid-template-columns: 1fr 1fr; }
+    .deep-dive-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .case-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .decision-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .resume-grid {
+      grid-template-columns: 0.95fr 1.05fr;
+    }
+
+    .contact-grid {
+      grid-template-columns: 1fr 1fr;
+    }
 
     .card {
       border: 1px solid var(--line);
       border-radius: 20px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
       padding: 22px;
     }
 
-    .card h3 { margin-bottom: 12px; }
-    .card p { font-size: 15px; line-height: 1.72; }
+    .card h3 {
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      font-size: 15px;
+      line-height: 1.72;
+    }
 
     .subtle-title {
       color: var(--accent);
@@ -797,7 +941,7 @@
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       padding-bottom: 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       color: var(--text-soft);
     }
 
@@ -818,11 +962,11 @@
       border: 1px solid var(--line);
       border-radius: 18px;
       padding: 20px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .principle-num {
-      color: rgba(255,187,92,0.55);
+      color: rgba(255, 187, 92, 0.55);
       font-size: 12px;
       margin-bottom: 10px;
       text-transform: uppercase;
@@ -839,7 +983,7 @@
     .stack-card {
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: rgba(255,255,255,0.02);
+      background: rgba(255, 255, 255, 0.02);
       padding: 18px;
     }
 
@@ -865,7 +1009,7 @@
 
     .code-block {
       background: #0b0b0b;
-      border: 1px solid rgba(255,255,255,0.07);
+      border: 1px solid rgba(255, 255, 255, 0.07);
       border-radius: 18px;
       padding: 18px;
       overflow-x: auto;
@@ -875,18 +1019,29 @@
       color: #e7e7e7;
     }
 
-    .code-block .kw { color: #ffbb5c; }
-    .code-block .fn { color: #8ab4ff; }
-    .code-block .str { color: #86e1b8; }
-    .code-block .cm { color: rgba(255,255,255,0.42); }
+    .code-block .kw {
+      color: #ffbb5c;
+    }
+
+    .code-block .fn {
+      color: #8ab4ff;
+    }
+
+    .code-block .str {
+      color: #86e1b8;
+    }
+
+    .code-block .cm {
+      color: rgba(255, 255, 255, 0.42);
+    }
 
     .cta {
       border: 1px solid var(--line);
       border-radius: 24px;
       padding: 28px;
       background:
-        linear-gradient(180deg, rgba(255,187,92,0.08), rgba(255,255,255,0.02)),
-        rgba(255,255,255,0.02);
+        linear-gradient(180deg, rgba(255, 187, 92, 0.08), rgba(255, 255, 255, 0.02)),
+        rgba(255, 255, 255, 0.02);
     }
 
     footer {
@@ -922,7 +1077,9 @@
       letter-spacing: 0.12em;
     }
 
-    .footer-links a:hover { color: var(--accent); }
+    .footer-links a:hover {
+      color: var(--accent);
+    }
 
     .reveal {
       opacity: 0;
@@ -936,6 +1093,7 @@
     }
 
     @media (max-width: 1100px) {
+
       .hero-grid,
       .resume-grid,
       .contact-grid,
@@ -966,7 +1124,7 @@
         padding: 0;
         z-index: 40;
       }
-      
+
       .nav-toggle span {
         width: 100%;
         height: 1.5px;
@@ -1007,9 +1165,18 @@
         color: var(--text) !important;
       }
 
-      .nav-toggle.active span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-      .nav-toggle.active span:nth-child(2) { opacity: 0; transform: translateX(10px); }
-      .nav-toggle.active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+      .nav-toggle.active span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+      }
+
+      .nav-toggle.active span:nth-child(2) {
+        opacity: 0;
+        transform: translateX(10px);
+      }
+
+      .nav-toggle.active span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+      }
 
       nav .availability {
         display: none;
@@ -1022,9 +1189,13 @@
         align-items: start;
       }
 
-      section { padding: 70px 0; }
+      section {
+        padding: 70px 0;
+      }
 
-      .hero { padding-top: 26px; }
+      .hero {
+        padding-top: 26px;
+      }
 
       .hero-actions {
         flex-direction: column;
@@ -1039,9 +1210,29 @@
         min-height: 440px;
       }
     }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      ::before,
+      ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
   </style>
 </head>
+
 <body>
+  <a href="#main" class="skip-link">Skip to content</a>
 
   <nav>
     <div class="container nav-inner">
@@ -1069,12 +1260,12 @@
     </div>
   </nav>
 
-  <main>
+  <main id="main">
     <!-- HERO -->
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy reveal">
-          
+
           <h1>Production AI systems for teams that need more than demos.</h1>
 
           <p>
@@ -1101,19 +1292,23 @@
           <div class="proof-list">
             <div class="proof-item">
               <div class="marker">01</div>
-              <div>Built <strong>real-time AI translation infrastructure</strong> using WebRTC and OpenAI Realtime.</div>
+              <div>Built <strong>real-time AI translation infrastructure</strong> using WebRTC and OpenAI Realtime.
+              </div>
             </div>
             <div class="proof-item">
               <div class="marker">02</div>
-              <div>Designed <strong>multi-model consensus architecture</strong> for valuation and decision support systems.</div>
+              <div>Designed <strong>multi-model consensus architecture</strong> for valuation and decision support
+                systems.</div>
             </div>
             <div class="proof-item">
               <div class="marker">03</div>
-              <div>Shipped <strong>generative AI commerce infrastructure</strong> for virtual try-on and retailer integration.</div>
+              <div>Shipped <strong>generative AI commerce infrastructure</strong> for virtual try-on and retailer
+                integration.</div>
             </div>
             <div class="proof-item">
               <div class="marker">04</div>
-              <div>Built products end-to-end across <strong>frontend, backend, AI integration, billing and deployment</strong>.</div>
+              <div>Built products end-to-end across <strong>frontend, backend, AI integration, billing and
+                  deployment</strong>.</div>
             </div>
           </div>
 
@@ -1141,7 +1336,8 @@
                 <div class="term-bubble-wrap">
                   <div class="term-label mono">Founder</div>
                   <div class="term-bubble user">
-                    Design a real-time multilingual voice system for tour groups with low latency, cost control and clean fallback handling.
+                    Design a real-time multilingual voice system for tour groups with low latency, cost control and
+                    clean fallback handling.
                   </div>
                 </div>
               </div>
@@ -1161,7 +1357,8 @@
                 <div class="term-bubble-wrap">
                   <div class="term-label mono">System</div>
                   <div class="term-bubble">
-                    Proposed architecture: WebRTC transport, voice activity gating, per-language inference lanes, realtime session sync and guide-controlled playback.
+                    Proposed architecture: WebRTC transport, voice activity gating, per-language inference lanes,
+                    realtime session sync and guide-controlled playback.
                   </div>
                   <div class="term-output mono">
                     <div><span class="out-key">→</span>transport: WebRTC audio streaming</div>
@@ -1187,7 +1384,8 @@
                 <div class="term-bubble-wrap">
                   <div class="term-label mono">System</div>
                   <div class="term-bubble">
-                    Added failure-safe billing pattern and deployment path. System now supports commercial rollout instead of demo-only behavior.
+                    Added failure-safe billing pattern and deployment path. System now supports commercial rollout
+                    instead of demo-only behavior.
                   </div>
                   <div class="term-output mono">
                     <div><span class="out-key">→</span>credits: reserve → capture → refund</div>
@@ -1274,20 +1472,20 @@
               <div class="mini-card">
                 <h4>Architecture</h4>
                 <div class="diagram-box">Guide microphone
-↓
-WebRTC audio stream
-↓
-Voice activity detection
-↓
-Language lane router
-↓
-Realtime model inference
-↓
-Translated audio streams
-↓
-Twilio Video Room
-↓
-Attendee devices</div>
+                  ↓
+                  WebRTC audio stream
+                  ↓
+                  Voice activity detection
+                  ↓
+                  Language lane router
+                  ↓
+                  Realtime model inference
+                  ↓
+                  Translated audio streams
+                  ↓
+                  Twilio Video Room
+                  ↓
+                  Attendee devices</div>
               </div>
 
               <div class="mini-card">
@@ -1344,27 +1542,28 @@ Attendee devices</div>
               <div class="mini-card">
                 <h4>Architecture</h4>
                 <div class="diagram-box">User image + garment
-↓
-Auth Validation + job creation
-↓
-Credit reservation
-↓
-Generation pipeline
-↓
-AI as a Judge (with retry)
-↓
-Result persistence
-↓
-Credit capture / refund
-↓
-Widget or app delivery</div>
+                  ↓
+                  Auth Validation + job creation
+                  ↓
+                  Credit reservation
+                  ↓
+                  Generation pipeline
+                  ↓
+                  AI as a Judge (with retry)
+                  ↓
+                  Result persistence
+                  ↓
+                  Credit capture / refund
+                  ↓
+                  Widget or app delivery</div>
               </div>
 
               <div class="mini-card">
                 <h4>Technical Highlights</h4>
                 <ul class="list">
                   <li>Atomic reserve → capture → refund pattern handles async failure cases cleanly.</li>
-                  <li>Widget-first architecture matches retailer adoption behavior better than outbound app redirects.</li>
+                  <li>Widget-first architecture matches retailer adoption behavior better than outbound app redirects.
+                  </li>
                   <li>Email gating introduced before free compute to protect infrastructure spend.</li>
                   <li>Product designed for both direct consumer usage and B2B retailer embedding.</li>
                 </ul>
@@ -1412,18 +1611,18 @@ Widget or app delivery</div>
               <div class="mini-card">
                 <h4>Architecture</h4>
                 <div class="diagram-box">Image upload
-↓
-Vision call #1
-Vision call #2
-Vision call #3
-↓
-Structured outputs
-↓
-Judge model adjudication
-↓
-Confidence score + explanation
-↓
-Operator dashboard</div>
+                  ↓
+                  Vision call #1
+                  Vision call #2
+                  Vision call #3
+                  ↓
+                  Structured outputs
+                  ↓
+                  Judge model adjudication
+                  ↓
+                  Confidence score + explanation
+                  ↓
+                  Operator dashboard</div>
               </div>
 
               <div class="mini-card">
@@ -1492,7 +1691,8 @@ Operator dashboard</div>
             <div class="system-body">
               <div class="mini-card">
                 <h4>Focus</h4>
-                <p>Research separation, context objects, composition chains and feedback-informed prompt improvement.</p>
+                <p>Research separation, context objects, composition chains and feedback-informed prompt improvement.
+                </p>
               </div>
               <div class="mini-card">
                 <h4>Why It Matters</h4>
@@ -1528,7 +1728,8 @@ Operator dashboard</div>
               </div>
               <div class="mini-card">
                 <h4>Why It Matters</h4>
-                <p>Shows reuse of proven patterns across products rather than solving the same infrastructure problem twice.</p>
+                <p>Shows reuse of proven patterns across products rather than solving the same infrastructure problem
+                  twice.</p>
               </div>
               <div class="mini-card">
                 <h4>Status</h4>
@@ -1581,14 +1782,14 @@ Operator dashboard</div>
               assigns a confidence score and turns disagreement into escalation signal.
             </p>
             <div class="diagram-box" style="margin-top: 16px;">Input image
-↓
-Vision model output A
-Vision model output B
-Vision model output C
-↓
-Judge model
-↓
-Consensus + confidence + explanation</div>
+              ↓
+              Vision model output A
+              Vision model output B
+              Vision model output C
+              ↓
+              Judge model
+              ↓
+              Consensus + confidence + explanation</div>
           </div>
 
           <div class="card reveal">
@@ -1600,14 +1801,14 @@ Consensus + confidence + explanation</div>
               fails, times out or the client disconnects.
             </p>
             <div class="diagram-box" style="margin-top: 16px;">Reserve credits
-↓
-Create generation job
-↓
-Run model
-↓
-Capture on success
-or
-Refund on failure</div>
+              ↓
+              Create generation job
+              ↓
+              Run model
+              ↓
+              Capture on success
+              or
+              Refund on failure</div>
           </div>
         </div>
       </div>
@@ -1693,7 +1894,8 @@ Refund on failure</div>
             <div class="principle-num">03</div>
             <h3>Async billing boundaries must be atomic</h3>
             <p>
-              AI products fail in messy ways. Billing logic has to survive success, timeout, cancellation and retry states.
+              AI products fail in messy ways. Billing logic has to survive success, timeout, cancellation and retry
+              states.
             </p>
           </div>
 
@@ -1900,7 +2102,7 @@ Refund on failure</div>
           <div>
             <div class="eyebrow">Resume Snapshot</div>
             <h2>Fast recruiter view.</h2>
-            
+
           </div>
         </div>
 
@@ -1959,9 +2161,11 @@ Refund on failure</div>
             <div class="card" style="background: rgba(255,255,255,0.03);">
               <div class="subtle-title">Links</div>
               <div class="stack" style="margin-top: 0;">
-                <span><a href="mailto:your@email.com">Email</a></span>
-                <span><a href="https://www.linkedin.com/in/your-linkedin" target="_blank" rel="noopener">LinkedIn</a></span>
-                <span><a href="https://github.com/your-github" target="_blank" rel="noopener">GitHub</a></span>
+                <span><a
+                    href="mailto:justinduveen@virtualaiworkforce.com?subject=AI Development Enquiry">Email</a></span>
+                <span><a href="https://linkedin.com/in/justin-duveen" target="_blank" rel="noopener">LinkedIn</a></span>
+                <span><a href="https://github.com/JustinDuveen/justin_duveen_website" target="_blank"
+                    rel="noopener">GitHub</a></span>
                 <span><a href="/resume.pdf" target="_blank" rel="noopener">Resume PDF</a></span>
               </div>
 
@@ -2120,4 +2324,5 @@ Refund on failure</div>
     }
   </script>
 </body>
+
 </html>
