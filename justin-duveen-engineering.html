@@ -33,6 +33,7 @@
       "jobTitle": "Founding AI Engineer & AI Systems Architect",
       "description": "Founding AI Engineer and AI Systems Architect specializing in production AI systems, real-time voice, and multimodal inference pipelines.",
       "url": "https://justinduveen.com",
+      "image": "https://justinduveen.com/justin.jpg",
       "sameAs": [
         "https://linkedin.com/in/justin-duveen",
         "https://github.com/JustinDuveen/justin_duveen_website"
@@ -908,6 +909,8 @@
       border-radius: 20px;
       background: rgba(255, 255, 255, 0.02);
       padding: 22px;
+      min-width: 0;
+      /* Prevents flex/grid items from overflowing */
     }
 
     .card h3 {
@@ -1014,9 +1017,43 @@
       padding: 18px;
       overflow-x: auto;
       font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
+      font-size: 11px;
+      /* Slightly smaller for better fit */
       line-height: 1.85;
       color: #e7e7e7;
+      max-width: 100%;
+      /* Force code block to stay within card */
+      word-break: break-word;
+      white-space: pre-wrap;
+      /* Wrap long lines to prevent horizontal scroll on small screens */
+    }
+
+    @media (min-width: 768px) {
+      .code-block {
+        font-size: 12px;
+        white-space: pre;
+        /* Keep horizontal scroll for desktop for better readability */
+      }
+    }
+
+    .code-block.scrollable {
+      max-height: 400px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+
+    .code-block.scrollable::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .code-block.scrollable::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .code-block.scrollable::-webkit-scrollbar-thumb {
+      background: var(--line-strong);
+      border-radius: 10px;
     }
 
     .code-block .kw {
@@ -2041,58 +2078,3087 @@
         <div class="case-grid">
           <div class="card reveal">
             <div class="subtle-title">Example 01</div>
-            <h3>Consensus pipeline</h3>
-            <pre class="code-block"><span class="kw">async function</span> <span class="fn">evaluateItem</span>(image) {
-  <span class="kw">const</span> results = <span class="kw">await</span> Promise.all([
-    <span class="fn">visionModel</span>(image),
-    <span class="fn">visionModel</span>(image),
-    <span class="fn">visionModel</span>(image)
-  ])
+            <h3>Consensus Evaluation Pipeline</h3>
+            <pre class="code-block scrollable"><span class="cm">/**
+ * Consensus Evaluation Pipeline
+ *
+ * Runs VISION_CALL_COUNT parallel vision model calls against an item image,
+ * then passes the quorum of successful valuations to a judge model that produces
+ * a consensus value and confidence score.
+ *
+ * ─── Idempotency / duplicate-execution contract ──────────────────────────────
+ *
+ *  This pipeline is intentionally stateless. It does NOT implement an atomic
+ *  execution claim or persisted workflow state. Duplicate-execution safety is
+ *  the caller&#x27;s responsibility:
+ *    - The caller must ensure at most one worker runs runConsensusEvaluation
+ *      per itemId at a time (for example via an upstream job claim or lock).
+ *    - itemId is threaded as a correlation key, not an idempotency gate.
+ *    - If crash recovery or replay semantics are required, wrap this pipeline
+ *      in a durable workflow with its own state machine.
+ *
+ * ─── Design decisions ────────────────────────────────────────────────────────
+ *
+ *  Quorum:
+ *    Minimum successful vision calls required to proceed to judge (default: 2/3).
+ *    Retryability of QUORUM_NOT_MET is derived from failure composition:
+ *      - Majority transient failures         → retry_with_backoff
+ *      - Majority permanent/invalid output   → no_retry
+ *      - Mixed / ambiguous                   → dlq_only
+ *
+ *  Partial-failure model:
+ *    Each vision call returns a typed VisionOutcome (success, failure, or cancelled).
+ *    Cancelled outcomes (intentional early-cancel after quorum) are NOT counted as
+ *    failures and do NOT contribute to degraded status or failureSummary.
+ *    Invalid model output (INVALID_OUTPUT) is a permanent contract failure and is
+ *    never retried.
+ *    Transient failures (TIMEOUT, 5xx, RATE_LIMITED) are retried up to
+ *    MAX_VISION_RETRIES.
+ *
+ *  Early cancel:
+ *    If options.earlyCancel = true, remaining in-flight vision calls are aborted
+ *    once quorum is met, via a composed AbortSignal (timeout + earlyCancel merged).
+ *    Calls aborted by peer quorum completion return
+ *    { ok: false, cancelled: true } and are excluded from failure accounting.
+ *    Default: false — all calls run to completion for richer consensus signal.
+ *    Tradeoff: earlyCancel reduces cost and latency but reduces consensus signal.
+ *
+ *  Model diversity:
+ *    options.visionModelIds allows specifying a model per call slot.
+ *    Length must equal VISION_CALL_COUNT if provided.
+ *    Duplicates are allowed. If true model diversity is desired, the caller must
+ *    provide distinct model IDs explicitly.
+ *
+ *  Consensus input determinism:
+ *    Valuations are sorted by callIndex before passing to the judge so that judge
+ *    input is stable regardless of arrival order.
+ *    The judge receives anonymous ordered { value, confidence } pairs — not callIndex.
+ *
+ *  Judge rationale:
+ *    JudgeResult.rationale is a structured justification summary, not raw
+ *    chain-of-thought.
+ *
+ * ─── Service contracts ───────────────────────────────────────────────────────
+ *
+ *  visionModelService.call(input, options):
+ *    - Returns RawVisionOutput: { value: number, confidence: number, modelId: string }
+ *    - Throws ModelServiceError (.statusCode, .code) on service-layer failure.
+ *    - Throws DOMException(&quot;...&quot;, &quot;AbortError&quot;) on AbortSignal cancellation.
+ *    - Must normalize AbortError across runtimes (Node fetch, undici, browser).
+ *
+ *  judgeModelService.call(input, options):
+ *    - Returns RawJudgeOutput: { value: number, confidence: number,
+ *                                rationale: string, modelId: string }
+ *    - Same error and abort contract as visionModelService.
+ *
+ * ─── Metric label notes ──────────────────────────────────────────────────────
+ *
+ *  All label values are strings because the metrics backend requires string labels.
+ *  Numeric and boolean values are stringified at label construction sites.
+ *  successCount and required are emitted to logs only, not as metric labels, to
+ *  avoid unnecessary cardinality.
+ *
+ * ─── Metrics emitted ─────────────────────────────────────────────────────────
+ *
+ *  Counters:
+ *    consensus.vision_call.success    { itemId, callIndex, modelId, environment }
+ *    consensus.vision_call.failure    { itemId, callIndex, modelId, errorCode, attempt, environment }
+ *    consensus.vision_call.timeout    { itemId, callIndex, environment }
+ *    consensus.vision_call.cancelled  { itemId, callIndex, environment }
+ *    consensus.quorum.failed          { itemId, retryStrategy, environment }
+ *    consensus.judge.success          { itemId, modelId, environment }
+ *    consensus.judge.failure          { itemId, modelId, errorCode, attempt, environment }
+ *    consensus.pipeline.success       { itemId, degraded, environment }
+ *    consensus.pipeline.failure       { itemId, errorCode, environment }
+ *
+ *  Timings:
+ *    consensus.vision_call.duration_ms { itemId, callIndex, modelId, environment }
+ *    consensus.judge.duration_ms       { itemId, modelId, environment }
+ *    consensus.pipeline.duration_ms    { itemId, environment }
+ */</span>
 
-  <span class="kw">const</span> judgement = <span class="kw">await</span> <span class="fn">judgeModel</span>({
-    valuations: results
-  })
+<span class="kw">import</span> { z } <span class="kw">from</span> &quot;zod&quot;;
+<span class="kw">import</span> { visionModelService } <span class="kw">from</span> &quot;./services/visionModelService&quot;;
+<span class="kw">import</span> { judgeModelService } <span class="kw">from</span> &quot;./services/judgeModelService&quot;;
+<span class="kw">import</span> { metrics } <span class="kw">from</span> &quot;./lib/metrics&quot;;
+<span class="kw">import</span> { loggerFactory } <span class="kw">from</span> &quot;./lib/logger&quot;;
 
-  <span class="kw">return</span> {
-    valuations: results,
-    consensus: judgement.value,
-    confidence: judgement.confidence
-  }
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Constants</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">const</span> VISION_CALL_COUNT = 3;
+
+<span class="kw">const</span> DEFAULT_QUORUM = 2;
+<span class="kw">const</span> DEFAULT_VISION_TIMEOUT_MS = 30_000;
+<span class="kw">const</span> DEFAULT_JUDGE_TIMEOUT_MS = 20_000;
+
+<span class="cm">/** Max retries per transient vision failure. Total attempts = retries + 1. */</span>
+<span class="kw">const</span> MAX_VISION_RETRIES = 1;
+
+<span class="cm">/** Max retries per transient judge failure. */</span>
+<span class="kw">const</span> MAX_JUDGE_RETRIES = 1;
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Zod schemas</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">const</span> ImageInputSchema = z.<span class="fn">object</span>({
+    data: z.<span class="kw">string</span>().<span class="fn">min</span>(1, &quot;image data must not be empty&quot;),
+    mediaType: z.<span class="kw">enum</span>([&quot;image/jpeg&quot;, &quot;image/png&quot;, &quot;image/webp&quot;]),
+});
+
+<span class="kw">const</span> RunConsensusOptionsSchema = z
+    .<span class="fn">object</span>({
+        quorum: z.<span class="kw">number</span>().<span class="fn">int</span>().<span class="fn">min</span>(1).<span class="fn">max</span>(VISION_CALL_COUNT).<span class="kw">default</span>(DEFAULT_QUORUM),
+        visionTimeoutMs: z
+            .<span class="kw">number</span>()
+            .<span class="fn">int</span>()
+            .<span class="fn">min</span>(1_000)
+            .<span class="fn">max</span>(120_000)
+            .<span class="kw">default</span>(DEFAULT_VISION_TIMEOUT_MS),
+        judgeTimeoutMs: z
+            .<span class="kw">number</span>()
+            .<span class="fn">int</span>()
+            .<span class="fn">min</span>(1_000)
+            .<span class="fn">max</span>(120_000)
+            .<span class="kw">default</span>(DEFAULT_JUDGE_TIMEOUT_MS),
+        earlyCancel: z.<span class="kw">boolean</span>().<span class="kw">default</span>(<span class="kw">false</span>),
+        visionModelIds: z
+            .<span class="fn">array</span>(z.<span class="kw">string</span>().<span class="fn">min</span>(1))
+            .<span class="fn">length</span>(VISION_CALL_COUNT, <span class="str">`visionModelIds must have exactly ${VISION_CALL_COUNT} entries`</span>)
+            .<span class="fn">optional</span>(),
+    })
+    .<span class="kw">default</span>({});
+
+<span class="kw">const</span> RawVisionOutputSchema = z.<span class="fn">object</span>({
+    value: z.<span class="kw">number</span>().<span class="fn">finite</span>(&quot;vision value must be finite&quot;),
+    confidence: z.<span class="kw">number</span>().<span class="fn">min</span>(0).<span class="fn">max</span>(1, &quot;vision confidence must be [0, 1]&quot;),
+    modelId: z.<span class="kw">string</span>().<span class="fn">min</span>(1),
+});
+
+<span class="kw">const</span> RawJudgeOutputSchema = z.<span class="fn">object</span>({
+    value: z.<span class="kw">number</span>().<span class="fn">finite</span>(&quot;judge value must be finite&quot;),
+    confidence: z.<span class="kw">number</span>().<span class="fn">min</span>(0).<span class="fn">max</span>(1, &quot;judge confidence must be [0, 1]&quot;),
+    rationale: z.<span class="kw">string</span>().<span class="fn">min</span>(1, &quot;judge rationale must not be empty&quot;),
+    modelId: z.<span class="kw">string</span>().<span class="fn">min</span>(1),
+});
+
+<span class="kw">const</span> JudgeInputEntrySchema = z.<span class="fn">object</span>({
+    value: z.<span class="kw">number</span>().<span class="fn">finite</span>(),
+    confidence: z.<span class="kw">number</span>().<span class="fn">min</span>(0).<span class="fn">max</span>(1),
+});
+
+<span class="kw">const</span> JudgeInputSchema = z.<span class="fn">array</span>(JudgeInputEntrySchema).<span class="fn">min</span>(1);
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Public types</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">type</span> ImageInput = z.infer&lt;<span class="kw">typeof</span> ImageInputSchema&gt;;
+<span class="kw">export</span> <span class="kw">type</span> RunConsensusOptions = z.infer&lt;<span class="kw">typeof</span> RunConsensusOptionsSchema&gt;;
+
+<span class="kw">export</span> <span class="kw">interface</span> VisionResult {
+    callIndex: <span class="kw">number</span>;
+    value: <span class="kw">number</span>;
+    confidence: <span class="kw">number</span>;
+    modelId: <span class="kw">string</span>;
+    durationMs: <span class="kw">number</span>;
+}
+
+<span class="kw">export</span> <span class="kw">interface</span> JudgeResult {
+    consensusValue: <span class="kw">number</span>;
+    confidence: <span class="kw">number</span>;
+    rationale: <span class="kw">string</span>;
+    modelId: <span class="kw">string</span>;
+}
+
+<span class="kw">export</span> <span class="kw">interface</span> ConsensusResult {
+    itemId: <span class="kw">string</span>;
+    valuations: VisionResult[];
+    judge: JudgeResult;
+    <span class="cm">/**
+     * True if fewer than VISION_CALL_COUNT calls genuinely failed but quorum still
+     * succeeded. Cancelled calls do not contribute to degraded status.
+     */</span>
+    degraded: <span class="kw">boolean</span>;
+    durationMs: <span class="kw">number</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Error types</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">type</span> VisionErrorCode =
+    | &quot;TIMEOUT&quot;
+    | &quot;RATE_LIMITED&quot;
+    | &quot;SERVER_ERROR&quot;
+    | &quot;CLIENT_ERROR&quot;
+    | &quot;INVALID_OUTPUT&quot;;
+
+<span class="kw">export</span> <span class="kw">type</span> JudgeErrorCode =
+    | &quot;TIMEOUT&quot;
+    | &quot;RATE_LIMITED&quot;
+    | &quot;SERVER_ERROR&quot;
+    | &quot;CLIENT_ERROR&quot;
+    | &quot;INVALID_OUTPUT&quot;
+    | &quot;INVALID_INPUT&quot;;
+
+<span class="kw">export</span> <span class="kw">type</span> ConsensusErrorCode =
+    | &quot;VALIDATION_FAILED&quot;
+    | &quot;QUORUM_NOT_MET&quot;
+    | &quot;VISION_ALL_FAILED&quot;
+    | &quot;JUDGE_FAILED&quot;
+    | &quot;JUDGE_INVALID_OUTPUT&quot;
+    | &quot;JUDGE_INVALID_INPUT&quot;;
+
+<span class="kw">export</span> <span class="kw">type</span> RetryStrategy = &quot;no_retry&quot; | &quot;retry_with_backoff&quot; | &quot;dlq_only&quot;;
+
+<span class="kw">export</span> <span class="kw">interface</span> VisionFailureSummary {
+    transientCount: <span class="kw">number</span>;
+    clientErrorCount: <span class="kw">number</span>;
+    invalidOutputCount: <span class="kw">number</span>;
+}
+
+<span class="kw">export</span> <span class="kw">class</span> ConsensusError <span class="kw">extends</span> Error {
+    <span class="kw">public</span> <span class="kw">readonly</span> errorCode: ConsensusErrorCode;
+    <span class="kw">public</span> <span class="kw">readonly</span> itemId: <span class="kw">string</span>;
+    <span class="kw">public</span> <span class="kw">readonly</span> retryStrategy: RetryStrategy;
+    <span class="kw">public</span> <span class="kw">readonly</span> failureSummary?: VisionFailureSummary;
+    <span class="kw">public</span> <span class="kw">readonly</span> judgeErrorCode?: JudgeErrorCode;
+
+    <span class="kw">constructor</span>(
+        message: <span class="kw">string</span>,
+        errorCode: ConsensusErrorCode,
+        itemId: <span class="kw">string</span>,
+        retryStrategy: RetryStrategy,
+        extras: { failureSummary?: VisionFailureSummary; judgeErrorCode?: JudgeErrorCode } = {},
+        options?: ErrorOptions,
+    ) {
+        <span class="kw">super</span>(message, options);
+        Object.<span class="fn">setPrototypeOf</span>(<span class="kw">this</span>, <span class="kw">new</span>.target.prototype);
+        <span class="kw">this</span>.name = &quot;ConsensusError&quot;;
+        <span class="kw">this</span>.errorCode = errorCode;
+        <span class="kw">this</span>.itemId = itemId;
+        <span class="kw">this</span>.retryStrategy = retryStrategy;
+        <span class="kw">this</span>.failureSummary = extras.failureSummary;
+        <span class="kw">this</span>.judgeErrorCode = extras.judgeErrorCode;
+    }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Internal types</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">type</span> VisionCallSuccess = { ok: <span class="kw">true</span>; result: VisionResult };
+<span class="kw">type</span> VisionCallFailure = {
+    ok: <span class="kw">false</span>;
+    cancelled: <span class="kw">false</span>;
+    callIndex: <span class="kw">number</span>;
+    errorCode: VisionErrorCode;
+    error: ErrorMeta;
+};
+<span class="kw">type</span> VisionCallCancelled = {
+    ok: <span class="kw">false</span>;
+    cancelled: <span class="kw">true</span>;
+    callIndex: <span class="kw">number</span>;
+};
+<span class="kw">type</span> VisionOutcome = VisionCallSuccess | VisionCallFailure | VisionCallCancelled;
+
+<span class="kw">type</span> RawVisionOutput = z.infer&lt;<span class="kw">typeof</span> RawVisionOutputSchema&gt;;
+<span class="kw">type</span> RawJudgeOutput = z.infer&lt;<span class="kw">typeof</span> RawJudgeOutputSchema&gt;;
+
+<span class="kw">interface</span> ModelServiceError <span class="kw">extends</span> Error {
+    statusCode?: <span class="kw">number</span>;
+    code?: <span class="kw">string</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Typed metric labels</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">interface</span> VisionMetricLabels {
+    itemId: <span class="kw">string</span>;
+    callIndex: <span class="kw">string</span>;
+    modelId: <span class="kw">string</span>;
+    environment: <span class="kw">string</span>;
+    errorCode?: VisionErrorCode;
+    attempt?: <span class="kw">string</span>;
+}
+
+<span class="kw">interface</span> JudgeMetricLabels {
+    itemId: <span class="kw">string</span>;
+    modelId: <span class="kw">string</span>;
+    environment: <span class="kw">string</span>;
+    errorCode?: JudgeErrorCode;
+    attempt?: <span class="kw">string</span>;
+}
+
+<span class="kw">interface</span> PipelineMetricLabels {
+    itemId: <span class="kw">string</span>;
+    environment: <span class="kw">string</span>;
+    errorCode?: ConsensusErrorCode;
+    degraded?: <span class="kw">string</span>;
+    retryStrategy?: RetryStrategy;
+}
+
+<span class="kw">interface</span> StructuredLogger {
+    <span class="fn">info</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+    <span class="fn">warn</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+    <span class="fn">error</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Core pipeline</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span> <span class="fn">runConsensusEvaluation</span>(
+    itemId: <span class="kw">string</span>,
+    image: ImageInput,
+    options?: Partial&lt;RunConsensusOptions&gt;,
+): Promise&lt;ConsensusResult&gt; {
+    <span class="kw">if</span> (!itemId?.<span class="fn">trim</span>()) {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(&quot;Missing itemId&quot;, &quot;VALIDATION_FAILED&quot;, itemId ?? &quot;UNKNOWN&quot;, &quot;no_retry&quot;);
+    }
+
+    <span class="kw">const</span> imageResult = ImageInputSchema.<span class="fn">safeParse</span>(image);
+    <span class="kw">if</span> (!imageResult.success) {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+            &quot;Invalid image input&quot;,
+            &quot;VALIDATION_FAILED&quot;,
+            itemId,
+            &quot;no_retry&quot;,
+            {},
+            { cause: <span class="kw">new</span> <span class="fn">Error</span>(imageResult.error.message) },
+        );
+    }
+
+    <span class="kw">const</span> optResult = RunConsensusOptionsSchema.<span class="fn">safeParse</span>(options ?? {});
+    <span class="kw">if</span> (!optResult.success) {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+            &quot;Invalid options&quot;,
+            &quot;VALIDATION_FAILED&quot;,
+            itemId,
+            &quot;no_retry&quot;,
+            {},
+            { cause: <span class="kw">new</span> <span class="fn">Error</span>(optResult.error.message) },
+        );
+    }
+
+    <span class="kw">const</span> { quorum, visionTimeoutMs, judgeTimeoutMs, earlyCancel, visionModelIds } = optResult.data;
+    <span class="kw">const</span> env = <span class="fn">resolveEnvironment</span>();
+    <span class="kw">const</span> pipeLabels: PipelineMetricLabels = { itemId, environment: env };
+    <span class="kw">const</span> logger: StructuredLogger = loggerFactory.<span class="fn">create</span>({ itemId, environment: env });
+    <span class="kw">const</span> pipeStart = <span class="fn">performanceNow</span>();
+
+    logger.<span class="fn">info</span>(&quot;Consensus pipeline started&quot;, {
+        evt: &quot;PIPELINE_STARTED&quot;,
+        quorum,
+        visionCallCount: VISION_CALL_COUNT,
+        visionTimeoutMs,
+        judgeTimeoutMs,
+        earlyCancel,
+        visionModelIds: visionModelIds ?? &quot;<span class="kw">default</span>&quot;,
+    });
+
+    let valuations: VisionResult[];
+    let failedCount: <span class="kw">number</span>;
+
+    <span class="kw">try</span> {
+        ({ valuations, failedCount } = <span class="kw">await</span> <span class="fn">runVisionCalls</span>({
+            itemId,
+            image: imageResult.data,
+            quorum,
+            visionTimeoutMs,
+            earlyCancel,
+            visionModelIds,
+            env,
+            logger,
+        }));
+    } <span class="kw">catch</span> (err) {
+        <span class="kw">if</span> (err <span class="kw">instanceof</span> ConsensusError) {
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - pipeStart;
+            metrics.<span class="fn">increment</span>(&quot;consensus.pipeline.failure&quot;, { ...pipeLabels, errorCode: err.errorCode });
+            metrics.<span class="fn">timing</span>(&quot;consensus.pipeline.duration_ms&quot;, durationMs, pipeLabels);
+            logger.<span class="fn">error</span>(&quot;Pipeline failed at vision stage&quot;, {
+                evt: &quot;PIPELINE_FAILED&quot;,
+                errorCode: err.errorCode,
+                failureSummary: err.failureSummary,
+                durationMs,
+            });
+            <span class="kw">throw</span> err;
+        }
+        <span class="kw">throw</span> err;
+    }
+
+    <span class="kw">const</span> degraded = failedCount &gt; 0;
+    <span class="kw">if</span> (degraded) {
+        logger.<span class="fn">warn</span>(&quot;Degraded run — quorum met but some vision calls genuinely failed&quot;, {
+            evt: &quot;PIPELINE_DEGRADED&quot;,
+            successCount: valuations.length,
+            failedCount,
+        });
+    }
+
+    let judgeResult: JudgeResult;
+    <span class="kw">try</span> {
+        judgeResult = <span class="kw">await</span> <span class="fn">runJudge</span>({ itemId, valuations, judgeTimeoutMs, env, logger });
+    } <span class="kw">catch</span> (err) {
+        <span class="kw">if</span> (err <span class="kw">instanceof</span> ConsensusError) {
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - pipeStart;
+            metrics.<span class="fn">increment</span>(&quot;consensus.pipeline.failure&quot;, { ...pipeLabels, errorCode: err.errorCode });
+            metrics.<span class="fn">timing</span>(&quot;consensus.pipeline.duration_ms&quot;, durationMs, pipeLabels);
+            logger.<span class="fn">error</span>(&quot;Pipeline failed at judge stage&quot;, {
+                evt: &quot;PIPELINE_FAILED&quot;,
+                errorCode: err.errorCode,
+                judgeErrorCode: err.judgeErrorCode,
+                durationMs,
+            });
+            <span class="kw">throw</span> err;
+        }
+        <span class="kw">throw</span> err;
+    }
+
+    <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - pipeStart;
+    metrics.<span class="fn">increment</span>(&quot;consensus.pipeline.success&quot;, { ...pipeLabels, degraded: <span class="fn">String</span>(degraded) });
+    metrics.<span class="fn">timing</span>(&quot;consensus.pipeline.duration_ms&quot;, durationMs, pipeLabels);
+    logger.<span class="fn">info</span>(&quot;Consensus pipeline completed&quot;, {
+        evt: &quot;PIPELINE_COMPLETED&quot;,
+        consensusValue: judgeResult.consensusValue,
+        confidence: judgeResult.confidence,
+        degraded,
+        durationMs,
+    });
+
+    <span class="kw">return</span> {
+        itemId,
+        valuations,
+        judge: judgeResult,
+        degraded,
+        durationMs,
+    };
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Vision calls</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">runVisionCalls</span>({
+    itemId,
+    image,
+    quorum,
+    visionTimeoutMs,
+    earlyCancel,
+    visionModelIds,
+    env,
+    logger,
+}: {
+    itemId: <span class="kw">string</span>;
+    image: ImageInput;
+    quorum: <span class="kw">number</span>;
+    visionTimeoutMs: <span class="kw">number</span>;
+    earlyCancel: <span class="kw">boolean</span>;
+    visionModelIds?: <span class="kw">string</span>[];
+    env: <span class="kw">string</span>;
+    logger: StructuredLogger;
+}): Promise&lt;{ valuations: VisionResult[]; failedCount: <span class="kw">number</span> }&gt; {
+    <span class="kw">const</span> earlyAbortController = <span class="kw">new</span> <span class="fn">AbortController</span>();
+
+    <span class="cm">// This counter is only used to decide when to fire the shared early-cancel</span>
+    <span class="cm">// signal. Final truth comes from the settled outcomes array below.</span>
+    let successCountForAbort = 0;
+
+    <span class="kw">const</span> outcomes = <span class="kw">await</span> Promise.<span class="fn">all</span>(
+        Array.<span class="kw">from</span>({ length: VISION_CALL_COUNT }, (_, callIndex) =&gt;
+            <span class="fn">runSingleVisionCall</span>({
+                itemId,
+                image,
+                callIndex,
+                modelId: visionModelIds?.[callIndex],
+                visionTimeoutMs,
+                earlyCancel,
+                earlyAbortController,
+                env,
+                logger,
+                onSuccess: () =&gt; {
+                    successCountForAbort += 1;
+                    <span class="kw">if</span> (earlyCancel &amp;&amp; successCountForAbort === quorum) {
+                        earlyAbortController.<span class="fn">abort</span>(
+                            <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Quorum of ${quorum} met — aborting remaining vision calls`</span>),
+                        );
+                    }
+                },
+            }),
+        ),
+    );
+
+    <span class="kw">const</span> successes = outcomes.<span class="fn">filter</span>((o): o is VisionCallSuccess =&gt; o.ok);
+    <span class="kw">const</span> failures = outcomes.<span class="fn">filter</span>((o): o is VisionCallFailure =&gt; !o.ok &amp;&amp; !o.cancelled);
+    <span class="cm">// Cancelled outcomes are intentionally excluded from failure accounting.</span>
+
+    <span class="kw">const</span> failureSummary: VisionFailureSummary = {
+        transientCount: failures.<span class="fn">filter</span>((f) =&gt; <span class="fn">isTransientVisionError</span>(f.errorCode)).length,
+        clientErrorCount: failures.<span class="fn">filter</span>((f) =&gt; f.errorCode === &quot;CLIENT_ERROR&quot;).length,
+        invalidOutputCount: failures.<span class="fn">filter</span>((f) =&gt; f.errorCode === &quot;INVALID_OUTPUT&quot;).length,
+    };
+
+    <span class="kw">if</span> (successes.length === 0) {
+        <span class="kw">const</span> retryStrategy = <span class="fn">deriveVisionRetryStrategy</span>(failureSummary, failures.length);
+        logger.<span class="fn">error</span>(&quot;All vision calls failed&quot;, {
+            evt: &quot;ALL_VISION_CALLS_FAILED&quot;,
+            failureSummary,
+            failures: failures.<span class="fn">map</span>((f) =&gt; ({
+                callIndex: f.callIndex,
+                errorCode: f.errorCode,
+                error: f.error,
+            })),
+        });
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(&quot;All vision calls failed&quot;, &quot;VISION_ALL_FAILED&quot;, itemId, retryStrategy, {
+            failureSummary,
+        });
+    }
+
+    <span class="kw">if</span> (successes.length &lt; quorum) {
+        <span class="kw">const</span> retryStrategy = <span class="fn">deriveVisionRetryStrategy</span>(failureSummary, failures.length);
+        metrics.<span class="fn">increment</span>(&quot;consensus.quorum.failed&quot;, {
+            itemId,
+            environment: env,
+            retryStrategy,
+        });
+        logger.<span class="fn">error</span>(&quot;Quorum not met&quot;, {
+            evt: &quot;QUORUM_NOT_MET&quot;,
+            successCount: successes.length,
+            required: quorum,
+            retryStrategy,
+            failureSummary,
+            failures: failures.<span class="fn">map</span>((f) =&gt; ({
+                callIndex: f.callIndex,
+                errorCode: f.errorCode,
+            })),
+        });
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+            <span class="str">`Quorum not met: ${successes.length}/${quorum} required vision calls succeeded`</span>,
+            &quot;QUORUM_NOT_MET&quot;,
+            itemId,
+            retryStrategy,
+            { failureSummary },
+        );
+    }
+
+    <span class="kw">return</span> {
+        valuations: successes.<span class="fn">map</span>((s) =&gt; s.result),
+        failedCount: failures.length,
+    };
+}
+
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">runSingleVisionCall</span>({
+    itemId,
+    image,
+    callIndex,
+    modelId,
+    visionTimeoutMs,
+    earlyCancel,
+    earlyAbortController,
+    env,
+    logger,
+    onSuccess,
+}: {
+    itemId: <span class="kw">string</span>;
+    image: ImageInput;
+    callIndex: <span class="kw">number</span>;
+    modelId?: <span class="kw">string</span>;
+    visionTimeoutMs: <span class="kw">number</span>;
+    earlyCancel: <span class="kw">boolean</span>;
+    earlyAbortController: AbortController;
+    env: <span class="kw">string</span>;
+    logger: StructuredLogger;
+    onSuccess: () =&gt; <span class="kw">void</span>;
+}): Promise&lt;VisionOutcome&gt; {
+    <span class="kw">if</span> (earlyCancel &amp;&amp; earlyAbortController.signal.aborted) {
+        metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.cancelled&quot;, {
+            itemId,
+            callIndex: <span class="fn">String</span>(callIndex),
+            environment: env,
+        });
+        <span class="kw">return</span> { ok: <span class="kw">false</span>, cancelled: <span class="kw">true</span>, callIndex };
+    }
+
+    let lastErrorCode: VisionErrorCode = &quot;SERVER_ERROR&quot;;
+    let lastError: <span class="kw">unknown</span>;
+
+    <span class="kw">for</span> (let attempt = 0; attempt &lt;= MAX_VISION_RETRIES; attempt++) {
+        <span class="kw">const</span> callController = <span class="kw">new</span> <span class="fn">AbortController</span>();
+        <span class="kw">const</span> timeoutHandle = <span class="fn">setTimeout</span>(() =&gt; {
+            callController.<span class="fn">abort</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Vision call ${callIndex} timed out after ${visionTimeoutMs}ms`</span>));
+        }, visionTimeoutMs);
+
+        <span class="kw">const</span> composedSignal = earlyCancel
+            ? <span class="fn">mergeSignals</span>(callController.signal, earlyAbortController.signal)
+            : callController.signal;
+
+        <span class="kw">const</span> callStart = <span class="fn">performanceNow</span>();
+        <span class="kw">const</span> visionLabels: VisionMetricLabels = {
+            itemId,
+            callIndex: <span class="fn">String</span>(callIndex),
+            modelId: modelId ?? &quot;<span class="kw">default</span>&quot;,
+            environment: env,
+        };
+
+        <span class="kw">try</span> {
+            <span class="kw">const</span> raw = (<span class="kw">await</span> visionModelService.<span class="fn">call</span>(
+                { image, modelId, requestId: <span class="str">`${itemId}_v${callIndex}_a${attempt}`</span> },
+                { signal: composedSignal },
+            )) <span class="kw">as</span> RawVisionOutput;
+
+            <span class="fn">clearTimeout</span>(timeoutHandle);
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - callStart;
+
+            <span class="cm">// If peer quorum abort fired while the provider was finishing, we intentionally</span>
+            <span class="cm">// discard the late result and treat the call as cancelled for deterministic</span>
+            <span class="cm">// early-cancel behavior.</span>
+            <span class="kw">if</span> (earlyCancel &amp;&amp; earlyAbortController.signal.aborted) {
+                metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.cancelled&quot;, {
+                    itemId,
+                    callIndex: <span class="fn">String</span>(callIndex),
+                    environment: env,
+                });
+                <span class="kw">return</span> { ok: <span class="kw">false</span>, cancelled: <span class="kw">true</span>, callIndex };
+            }
+
+            <span class="kw">const</span> parsed = RawVisionOutputSchema.<span class="fn">safeParse</span>(raw);
+            <span class="kw">if</span> (!parsed.success) {
+                lastErrorCode = &quot;INVALID_OUTPUT&quot;;
+                lastError = <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Vision call ${callIndex} invalid output: ${parsed.error.message}`</span>);
+                metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.failure&quot;, {
+                    ...visionLabels,
+                    errorCode: &quot;INVALID_OUTPUT&quot;,
+                    attempt: <span class="fn">String</span>(attempt),
+                });
+                logger.<span class="fn">error</span>(&quot;Vision call returned invalid output — permanent failure, not retrying&quot;, {
+                    evt: &quot;VISION_CALL_INVALID_OUTPUT&quot;,
+                    callIndex,
+                    attempt,
+                    durationMs,
+                    issues: parsed.error.issues.<span class="fn">map</span>((i) =&gt; ({
+                        path: i.path.<span class="fn">join</span>(&quot;.&quot;),
+                        message: i.message,
+                    })),
+                });
+                <span class="kw">break</span>;
+            }
+
+            <span class="kw">const</span> result: VisionResult = {
+                callIndex,
+                value: parsed.data.value,
+                confidence: parsed.data.confidence,
+                modelId: parsed.data.modelId,
+                durationMs,
+            };
+
+            <span class="kw">const</span> successLabels: VisionMetricLabels = {
+                ...visionLabels,
+                modelId: parsed.data.modelId,
+            };
+            metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.success&quot;, successLabels);
+            metrics.<span class="fn">timing</span>(&quot;consensus.vision_call.duration_ms&quot;, durationMs, successLabels);
+            logger.<span class="fn">info</span>(&quot;Vision call succeeded&quot;, {
+                evt: &quot;VISION_CALL_SUCCEEDED&quot;,
+                callIndex,
+                attempt,
+                modelId: parsed.data.modelId,
+                value: result.value,
+                confidence: result.confidence,
+                durationMs,
+            });
+
+            <span class="fn">onSuccess</span>();
+            <span class="kw">return</span> { ok: <span class="kw">true</span>, result };
+        } <span class="kw">catch</span> (err) {
+            <span class="fn">clearTimeout</span>(timeoutHandle);
+
+            <span class="kw">if</span> (earlyCancel &amp;&amp; err <span class="kw">instanceof</span> Error &amp;&amp; err.name === &quot;AbortError&quot; &amp;&amp; earlyAbortController.signal.aborted) {
+                metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.cancelled&quot;, {
+                    itemId,
+                    callIndex: <span class="fn">String</span>(callIndex),
+                    environment: env,
+                });
+                <span class="kw">return</span> { ok: <span class="kw">false</span>, cancelled: <span class="kw">true</span>, callIndex };
+            }
+
+            lastError = err;
+            lastErrorCode = <span class="fn">classifyVisionError</span>(err);
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - callStart;
+
+            <span class="kw">if</span> (lastErrorCode === &quot;TIMEOUT&quot;) {
+                metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.timeout&quot;, {
+                    itemId,
+                    callIndex: <span class="fn">String</span>(callIndex),
+                    environment: env,
+                });
+            }
+
+            metrics.<span class="fn">increment</span>(&quot;consensus.vision_call.failure&quot;, {
+                ...visionLabels,
+                errorCode: lastErrorCode,
+                attempt: <span class="fn">String</span>(attempt),
+            });
+            logger.<span class="fn">warn</span>(&quot;Vision call failed&quot;, {
+                evt: &quot;VISION_CALL_FAILED&quot;,
+                callIndex,
+                attempt,
+                errorCode: lastErrorCode,
+                error: <span class="fn">toErrorMeta</span>(err),
+                durationMs,
+            });
+
+            <span class="kw">if</span> (!<span class="fn">isTransientVisionError</span>(lastErrorCode)) {
+                <span class="kw">break</span>;
+            }
+        }
+    }
+
+    <span class="kw">return</span> {
+        ok: <span class="kw">false</span>,
+        cancelled: <span class="kw">false</span>,
+        callIndex,
+        errorCode: lastErrorCode,
+        error: <span class="fn">toErrorMeta</span>(lastError),
+    };
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Judge call</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">runJudge</span>({
+    itemId,
+    valuations,
+    judgeTimeoutMs,
+    env,
+    logger,
+}: {
+    itemId: <span class="kw">string</span>;
+    valuations: VisionResult[];
+    judgeTimeoutMs: <span class="kw">number</span>;
+    env: <span class="kw">string</span>;
+    logger: StructuredLogger;
+}): Promise&lt;JudgeResult&gt; {
+    <span class="kw">const</span> orderedValuations = [...valuations].<span class="fn">sort</span>((a, b) =&gt; a.callIndex - b.callIndex);
+    <span class="kw">const</span> rawJudgeInput = orderedValuations.<span class="fn">map</span>((v) =&gt; ({
+        value: v.value,
+        confidence: v.confidence,
+    }));
+
+    <span class="kw">const</span> inputParsed = JudgeInputSchema.<span class="fn">safeParse</span>(rawJudgeInput);
+    <span class="kw">if</span> (!inputParsed.success) {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+            &quot;Malformed valuations sent to judge&quot;,
+            &quot;JUDGE_INVALID_INPUT&quot;,
+            itemId,
+            &quot;no_retry&quot;,
+            { judgeErrorCode: &quot;INVALID_INPUT&quot; },
+            { cause: <span class="kw">new</span> <span class="fn">Error</span>(inputParsed.error.message) },
+        );
+    }
+
+    let lastError: <span class="kw">unknown</span>;
+    let lastErrorCode: JudgeErrorCode = &quot;SERVER_ERROR&quot;;
+
+    <span class="kw">for</span> (let attempt = 0; attempt &lt;= MAX_JUDGE_RETRIES; attempt++) {
+        <span class="kw">const</span> controller = <span class="kw">new</span> <span class="fn">AbortController</span>();
+        <span class="kw">const</span> timeoutHandle = <span class="fn">setTimeout</span>(() =&gt; {
+            controller.<span class="fn">abort</span>(<span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Judge call timed out after ${judgeTimeoutMs}ms`</span>));
+        }, judgeTimeoutMs);
+
+        <span class="kw">const</span> callStart = <span class="fn">performanceNow</span>();
+        <span class="kw">const</span> judgeLabels: JudgeMetricLabels = {
+            itemId,
+            modelId: &quot;<span class="kw">unknown</span>&quot;,
+            environment: env,
+        };
+
+        <span class="kw">try</span> {
+            <span class="kw">const</span> raw = (<span class="kw">await</span> judgeModelService.<span class="fn">call</span>(
+                { valuations: inputParsed.data, requestId: <span class="str">`${itemId}_judge_a${attempt}`</span> },
+                { signal: controller.signal },
+            )) <span class="kw">as</span> RawJudgeOutput;
+
+            <span class="fn">clearTimeout</span>(timeoutHandle);
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - callStart;
+
+            <span class="kw">const</span> parsed = RawJudgeOutputSchema.<span class="fn">safeParse</span>(raw);
+            <span class="kw">if</span> (!parsed.success) {
+                metrics.<span class="fn">increment</span>(&quot;consensus.judge.failure&quot;, {
+                    ...judgeLabels,
+                    errorCode: &quot;INVALID_OUTPUT&quot;,
+                    attempt: <span class="fn">String</span>(attempt),
+                });
+                logger.<span class="fn">error</span>(&quot;Judge returned invalid output — permanent failure&quot;, {
+                    evt: &quot;JUDGE_INVALID_OUTPUT&quot;,
+                    attempt,
+                    durationMs,
+                    issues: parsed.error.issues.<span class="fn">map</span>((i) =&gt; ({
+                        path: i.path.<span class="fn">join</span>(&quot;.&quot;),
+                        message: i.message,
+                    })),
+                });
+                <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+                    &quot;Judge returned invalid output&quot;,
+                    &quot;JUDGE_INVALID_OUTPUT&quot;,
+                    itemId,
+                    &quot;no_retry&quot;,
+                    { judgeErrorCode: &quot;INVALID_OUTPUT&quot; },
+                    { cause: <span class="kw">new</span> <span class="fn">Error</span>(parsed.error.message) },
+                );
+            }
+
+            <span class="kw">const</span> result: JudgeResult = {
+                consensusValue: parsed.data.value,
+                confidence: parsed.data.confidence,
+                rationale: parsed.data.rationale,
+                modelId: parsed.data.modelId,
+            };
+
+            <span class="kw">const</span> successLabels: JudgeMetricLabels = {
+                ...judgeLabels,
+                modelId: parsed.data.modelId,
+            };
+            metrics.<span class="fn">increment</span>(&quot;consensus.judge.success&quot;, successLabels);
+            metrics.<span class="fn">timing</span>(&quot;consensus.judge.duration_ms&quot;, durationMs, successLabels);
+            logger.<span class="fn">info</span>(&quot;Judge call succeeded&quot;, {
+                evt: &quot;JUDGE_CALL_SUCCEEDED&quot;,
+                attempt,
+                modelId: parsed.data.modelId,
+                consensusValue: result.consensusValue,
+                confidence: result.confidence,
+                durationMs,
+            });
+
+            <span class="kw">return</span> result;
+        } <span class="kw">catch</span> (err) {
+            <span class="fn">clearTimeout</span>(timeoutHandle);
+
+            <span class="kw">if</span> (
+                err <span class="kw">instanceof</span> ConsensusError &amp;&amp;
+                (err.errorCode === &quot;JUDGE_INVALID_OUTPUT&quot; || err.errorCode === &quot;JUDGE_INVALID_INPUT&quot;)
+            ) {
+                <span class="kw">throw</span> err;
+            }
+
+            lastError = err;
+            lastErrorCode = <span class="fn">classifyJudgeError</span>(err);
+            <span class="kw">const</span> durationMs = <span class="fn">performanceNow</span>() - callStart;
+
+            metrics.<span class="fn">increment</span>(&quot;consensus.judge.failure&quot;, {
+                ...judgeLabels,
+                errorCode: lastErrorCode,
+                attempt: <span class="fn">String</span>(attempt),
+            });
+            logger.<span class="fn">warn</span>(&quot;Judge call failed&quot;, {
+                evt: &quot;JUDGE_CALL_FAILED&quot;,
+                attempt,
+                errorCode: lastErrorCode,
+                error: <span class="fn">toErrorMeta</span>(err),
+                durationMs,
+            });
+
+            <span class="kw">if</span> (!<span class="fn">isTransientJudgeError</span>(lastErrorCode)) {
+                <span class="kw">break</span>;
+            }
+        }
+    }
+
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">ConsensusError</span>(
+        &quot;Judge call failed after retries&quot;,
+        &quot;JUDGE_FAILED&quot;,
+        itemId,
+        <span class="fn">retryStrategyForJudgeError</span>(lastErrorCode),
+        { judgeErrorCode: lastErrorCode },
+        { cause: lastError },
+    );
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Retry strategy derivation</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">function</span> <span class="fn">deriveVisionRetryStrategy</span>(summary: VisionFailureSummary, totalFailures: <span class="kw">number</span>): RetryStrategy {
+    <span class="kw">const</span> permanentTotal = summary.clientErrorCount + summary.invalidOutputCount;
+
+    <span class="kw">if</span> (permanentTotal === 0) {
+        <span class="kw">return</span> &quot;retry_with_backoff&quot;;
+    }
+    <span class="kw">if</span> (permanentTotal &gt; totalFailures / 2) {
+        <span class="kw">return</span> &quot;no_retry&quot;;
+    }
+    <span class="kw">return</span> &quot;dlq_only&quot;;
+}
+
+<span class="kw">function</span> <span class="fn">retryStrategyForJudgeError</span>(code: JudgeErrorCode): RetryStrategy {
+    <span class="kw">switch</span> (code) {
+        <span class="kw">case</span> &quot;TIMEOUT&quot;:
+        <span class="kw">case</span> &quot;RATE_LIMITED&quot;:
+        <span class="kw">case</span> &quot;SERVER_ERROR&quot;:
+            <span class="kw">return</span> &quot;retry_with_backoff&quot;;
+        <span class="kw">case</span> &quot;CLIENT_ERROR&quot;:
+        <span class="kw">case</span> &quot;INVALID_OUTPUT&quot;:
+        <span class="kw">case</span> &quot;INVALID_INPUT&quot;:
+            <span class="kw">return</span> &quot;no_retry&quot;;
+    }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Signal composition</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">function</span> <span class="fn">mergeSignals</span>(...signals: AbortSignal[]): AbortSignal {
+    <span class="kw">if</span> (<span class="kw">typeof</span> AbortSignal.<span class="kw">any</span> === &quot;<span class="kw">function</span>&quot;) {
+        <span class="kw">return</span> AbortSignal.<span class="kw">any</span>(signals);
+    }
+
+    <span class="kw">const</span> merged = <span class="kw">new</span> <span class="fn">AbortController</span>();
+
+    <span class="kw">const</span> abortOnce = (reason: <span class="kw">unknown</span>): <span class="kw">void</span> =&gt; {
+        <span class="kw">if</span> (!merged.signal.aborted) {
+            merged.<span class="fn">abort</span>(reason);
+        }
+    };
+
+    <span class="kw">for</span> (<span class="kw">const</span> signal <span class="kw">of</span> signals) {
+        <span class="kw">if</span> (signal.aborted) {
+            <span class="fn">abortOnce</span>(signal.reason);
+            <span class="kw">break</span>;
+        }
+
+        signal.<span class="fn">addEventListener</span>(
+            &quot;abort&quot;,
+            () =&gt; {
+                <span class="fn">abortOnce</span>(signal.reason);
+            },
+            { once: <span class="kw">true</span> },
+        );
+    }
+
+    <span class="kw">return</span> merged.signal;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Error classification</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">function</span> <span class="fn">classifyVisionError</span>(err: <span class="kw">unknown</span>): VisionErrorCode {
+    <span class="kw">if</span> (err <span class="kw">instanceof</span> Error &amp;&amp; err.name === &quot;AbortError&quot;) {
+        <span class="kw">return</span> &quot;TIMEOUT&quot;;
+    }
+
+    <span class="kw">const</span> e = err <span class="kw">as</span> ModelServiceError;
+    <span class="kw">const</span> status = e?.statusCode;
+
+    <span class="kw">if</span> (status === 429) <span class="kw">return</span> &quot;RATE_LIMITED&quot;;
+    <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 500) <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+    <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 400) <span class="kw">return</span> &quot;CLIENT_ERROR&quot;;
+    <span class="kw">if</span> (e?.code === &quot;ECONNRESET&quot; || e?.code === &quot;ENOTFOUND&quot;) <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+
+    <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+}
+
+<span class="kw">function</span> <span class="fn">classifyJudgeError</span>(err: <span class="kw">unknown</span>): JudgeErrorCode {
+    <span class="kw">if</span> (err <span class="kw">instanceof</span> Error &amp;&amp; err.name === &quot;AbortError&quot;) {
+        <span class="kw">return</span> &quot;TIMEOUT&quot;;
+    }
+
+    <span class="kw">const</span> e = err <span class="kw">as</span> ModelServiceError;
+    <span class="kw">const</span> status = e?.statusCode;
+
+    <span class="kw">if</span> (status === 429) <span class="kw">return</span> &quot;RATE_LIMITED&quot;;
+    <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 500) <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+    <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 400) <span class="kw">return</span> &quot;CLIENT_ERROR&quot;;
+    <span class="kw">if</span> (e?.code === &quot;ECONNRESET&quot; || e?.code === &quot;ENOTFOUND&quot;) <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+
+    <span class="kw">return</span> &quot;SERVER_ERROR&quot;;
+}
+
+<span class="kw">function</span> <span class="fn">isTransientVisionError</span>(code: VisionErrorCode): <span class="kw">boolean</span> {
+    <span class="kw">return</span> code === &quot;TIMEOUT&quot; || code === &quot;RATE_LIMITED&quot; || code === &quot;SERVER_ERROR&quot;;
+}
+
+<span class="kw">function</span> <span class="fn">isTransientJudgeError</span>(code: JudgeErrorCode): <span class="kw">boolean</span> {
+    <span class="kw">return</span> code === &quot;TIMEOUT&quot; || code === &quot;RATE_LIMITED&quot; || code === &quot;SERVER_ERROR&quot;;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Utilities</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">interface</span> ErrorMeta {
+    message: <span class="kw">string</span>;
+    name: <span class="kw">string</span>;
+    code?: <span class="kw">string</span>;
+    status?: <span class="kw">number</span>;
+    hasStack: <span class="kw">boolean</span>;
+}
+
+<span class="kw">function</span> <span class="fn">toErrorMeta</span>(err: <span class="kw">unknown</span>): ErrorMeta {
+    <span class="kw">if</span> (err <span class="kw">instanceof</span> Error) {
+        <span class="kw">const</span> e = err <span class="kw">as</span> ModelServiceError;
+        <span class="kw">return</span> {
+            message: e.message,
+            name: e.name,
+            code: e.code,
+            status: e.statusCode,
+            hasStack: <span class="fn">Boolean</span>(e.stack),
+        };
+    }
+
+    <span class="kw">return</span> {
+        message: <span class="fn">String</span>(err),
+        name: &quot;UnknownError&quot;,
+        hasStack: <span class="kw">false</span>,
+    };
+}
+
+<span class="kw">function</span> <span class="fn">performanceNow</span>(): <span class="kw">number</span> {
+    <span class="kw">return</span> <span class="kw">typeof</span> performance !== &quot;undefined&quot; ? performance.<span class="fn">now</span>() : Date.<span class="fn">now</span>();
+}
+
+<span class="kw">function</span> <span class="fn">resolveEnvironment</span>(): <span class="kw">string</span> {
+    <span class="kw">return</span> process.env.APP_ENV ?? process.env.NODE_ENV ?? &quot;<span class="kw">unknown</span>&quot;;
 }</pre>
           </div>
 
           <div class="card reveal">
             <div class="subtle-title">Example 02</div>
-            <h3>Atomic billing flow</h3>
-            <pre class="code-block"><span class="kw">async function</span> <span class="fn">runInferenceJob</span>(userId, payload) {
-  <span class="kw">const</span> reservation = <span class="kw">await</span> <span class="fn">reserveCredits</span>(userId)
+            <h3>Idempotent Inference Billing Saga</h3>
+            <pre class="code-block scrollable"><span class="cm">/**
+ * Idempotent Inference Billing Saga
+ *
+ * This is a distributed compensating-transaction workflow, NOT an atomic operation.
+ * Each step has an explicit compensation. No single transactional boundary spans
+ * all three services (billing / model / DLQ).
+ *
+ * Guarantees:
+ *  - Duplicate execution is prevented via atomic CAS claim, not a read-then-act check
+ *  - Every state transition is a typed CAS (fromState → toState), enforced by the store
+ *  - InvalidTransitionError maps to STATE_CONFLICT, not INFRA_UNAVAILABLE
+ *  - Reservation-failure state transition uses safeTransition, consistent with all others
+ *  - billingService.reserve errors are classified as infra-transient vs billing-business
+ *  - billingPending (success) and billingUnresolved (error) are deliberately distinct
+ *  - All metric labels are fully typed — no `as any` casts
+ *  - Claim TTL is intentionally sized relative to max possible saga wall-clock time
+ *  - Typed, structured error codes — no regex-on-message retry classification
+ *  - Strongly typed, versioned DLQ payloads with type + modelId + environment labels
+ *  - Labeled metrics at every service boundary
+ *
+ * ─── Downstream service contracts ───────────────────────────────────────────
+ *
+ *  billingService.reserve / capture / release:
+ *    - Idempotent on idempotencyKey; returns existing result on replay.
+ *    - Reservation TTL: 10 minutes.
+ *    - capture() rejects if actualUsage.totalTokens &gt; reservation.maxTokens.
+ *    - Pricing is locked at reservation time; the billing store owns version drift.
+ *    - MUST throw BillingRejectedError for business-logic rejections (insufficient
+ *      credits, model not available, etc.) and a generic Error for infra failures.
+ *      This distinction drives dlq_only vs retry_with_backoff on RESERVATION_FAILED.
+ *
+ *  modelService.call:
+ *    - Throws a DOMException with name === &quot;AbortError&quot; on AbortSignal cancellation.
+ *    - Throws a typed ModelServiceError (.statusCode, .code) for all service-layer failures.
+ *    - Does NOT enforce its own timeout. AbortSignal is the only timeout mechanism.
+ *    - MUST normalise abort errors to DOMException &quot;AbortError&quot; across all runtimes
+ *      (Node fetch, undici, browser, etc.) before throwing.
+ *
+ *  dlqService.enqueue:
+ *    - At-least-once delivery.
+ *    - Consumers must be idempotent on (type, jobId, schemaVersion).
+ *
+ *  jobStateStore.claim(jobId, ttlMs):
+ *    - Atomically creates a CLAIMED lease if no record exists for jobId.
+ *    - Throws JobAlreadyClaimedError (typed class) if a live record exists.
+ *    - Lease expires after ttlMs. Expired leases are recoverable by a sweeper.
+ *    - The sweeper owns recovery of jobs abandoned in any intermediate state.
+ *
+ *  jobStateStore.transition(jobId, from, to):
+ *    - CAS: throws InvalidTransitionError if current state !== from.
+ *    - Throws StoreUnavailableError on infrastructure failures.
+ *    - Only valid state machine paths can execute.
+ *
+ * ─── Job state machine ───────────────────────────────────────────────────────
+ *
+ *  [absent]          ──claim()──────────────► CLAIMED
+ *  CLAIMED           ──────────────────────► RESERVED
+ *  CLAIMED           ──(reserve failure)───► RESERVATION_FAILED  (sweeper may retry)
+ *  RESERVED          ──────────────────────► INFERENCE_RUNNING
+ *  INFERENCE_RUNNING ─────────────────────► INFERENCE_SUCCEEDED
+ *  INFERENCE_RUNNING ─(clean model fail)──► RELEASED
+ *  INFERENCE_RUNNING ─(release failed)────► RECONCILIATION_REQUIRED
+ *  INFERENCE_SUCCEEDED ───────────────────► CAPTURED
+ *  INFERENCE_SUCCEEDED ─(capture failed)──► RECONCILIATION_REQUIRED
+ *
+ * ─── Claim TTL sizing ────────────────────────────────────────────────────────
+ *
+ *  CLAIM_LEASE_TTL_MS (15 min) is intentionally larger than the worst-case saga
+ *  wall-clock time:
+ *    MAX_TIMEOUT_MS (2 min) + billing reserve + capture latency (est. ~1 min combined)
+ *    + retry jitter headroom (est. ~2 min) = ~5 min typical worst case.
+ *  15 min gives 3× headroom before a sweeper treats a CLAIMED record as abandoned.
+ *  Revisit if model timeout ceiling or billing SLA changes significantly.
+ *
+ * ─── Recovery model ──────────────────────────────────────────────────────────
+ *
+ *  CLAIMED + expired lease       → sweeper resets to absent; job is retryable.
+ *  RESERVATION_FAILED            → sweeper may retry or escalate after N attempts.
+ *  RECONCILIATION_REQUIRED       → DLQ worker retries release/capture; marks RELEASED
+ *                                   or CAPTURED on success; escalates to ops on failure.
+ *  INFERENCE_RUNNING + stale     → sweeper verifies model idempotency then transitions.
+ *  INFERENCE_SUCCEEDED + stale   → sweeper retries capture before reservation expiry.
+ *
+ * ─── billingPending vs billingUnresolved ─────────────────────────────────────
+ *
+ *  These are deliberately asymmetric and serve different callers:
+ *    billingPending   (on InferenceResult) — caller got a successful result but billing
+ *                     reconciliation is pending. UX can proceed; ops will reconcile.
+ *    billingUnresolved (on InferenceError) — caller got an error AND billing state is
+ *                     unresolved. Caller must not surface a result and should alert.
+ */</span>
 
-  <span class="kw">try</span> {
-    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">callModel</span>(payload)
-    <span class="kw">await</span> <span class="fn">captureCredits</span>(reservation.id)
-    <span class="kw">return</span> result
-  } <span class="kw">catch</span> (error) {
-    <span class="kw">await</span> <span class="fn">refundCredits</span>(reservation.id)
-    <span class="kw">throw</span> error
+<span class="kw">import</span> { z }                   <span class="kw">from</span> &quot;zod&quot;;
+<span class="kw">import</span> { billingService, BillingRejectedError } <span class="kw">from</span> &quot;./services/billingService&quot;;
+<span class="kw">import</span> { modelService }        <span class="kw">from</span> &quot;./services/modelService&quot;;
+<span class="kw">import</span> { dlqService }          <span class="kw">from</span> &quot;./services/dlqService&quot;;
+<span class="kw">import</span> {
+  jobStateStore,
+  JobAlreadyClaimedError,
+  InvalidTransitionError,
+} <span class="kw">from</span> &quot;./services/jobStateStore&quot;;
+<span class="kw">import</span> { metrics }             <span class="kw">from</span> &quot;./lib/metrics&quot;;
+<span class="kw">import</span> { loggerFactory }       <span class="kw">from</span> &quot;./lib/logger&quot;;
+<span class="kw">import</span> { computeExpectedCost } <span class="kw">from</span> &quot;./lib/costEstimator&quot;;
+<span class="kw">import</span> { ALLOWED_MODEL_IDS, <span class="kw">type</span> AllowedModelId } <span class="kw">from</span> &quot;./config/models&quot;;
+<span class="cm">// ALLOWED_MODEL_IDS must be declared as a const-asserted tuple at source:</span>
+<span class="cm">//   export const ALLOWED_MODEL_IDS = [&quot;gpt-4o&quot;, &quot;claude-3-5-sonnet&quot;] as const;</span>
+<span class="cm">//   export type AllowedModelId = typeof ALLOWED_MODEL_IDS[number];</span>
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Constants</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">const</span> MIN_TIMEOUT_MS     =   1_000;
+<span class="kw">const</span> MAX_TIMEOUT_MS     = 120_000;  <span class="cm">// 2 minutes</span>
+<span class="kw">const</span> DEFAULT_TIMEOUT_MS =  30_000;
+
+<span class="cm">/**
+ * Claim lease TTL. Intentionally sized at 3× the worst-case saga wall-clock time.
+ * See &quot;Claim TTL sizing&quot; in the header before changing this value.
+ */</span>
+<span class="kw">const</span> CLAIM_LEASE_TTL_MS = 15 * 60 * 1_000; <span class="cm">// 15 minutes</span>
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Runtime payload validation (Zod)</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">const</span> InferencePayloadSchema = z.<span class="fn">object</span>({
+  <span class="cm">/** Must be one of the server-side allowlisted values (const-asserted tuple). */</span>
+  modelId: z.<span class="kw">enum</span>(ALLOWED_MODEL_IDS),
+
+  <span class="cm">/**
+   * ESTIMATE for pre-flight cost reservation ONLY.
+   * Actual billing uses result.usage from the model response.
+   * Must not be treated as authoritative for any other purpose.
+   */</span>
+  promptTokens: z
+    .<span class="kw">number</span>()
+    .<span class="fn">int</span>(&quot;promptTokens must be an integer&quot;)
+    .<span class="fn">positive</span>(&quot;promptTokens must be &gt; 0&quot;)
+    .<span class="fn">max</span>(200_000, &quot;promptTokens exceeds maximum supported context window&quot;),
+});
+
+<span class="kw">export</span> <span class="kw">type</span> InferencePayload = z.infer&lt;<span class="kw">typeof</span> InferencePayloadSchema&gt;;
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Billing success policy (see header for full description)</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">type</span> BillingPolicy = &quot;strict_billing&quot; | &quot;best_effort_billing&quot;;
+
+<span class="kw">export</span> <span class="kw">interface</span> RunInferenceOptions {
+  <span class="cm">/** @default &quot;strict_billing&quot; */</span>
+  billingPolicy?: BillingPolicy;
+  <span class="cm">/**
+   * Model call abort timeout in milliseconds. Must be [1_000, 120_000].
+   * @default 30_000
+   */</span>
+  timeoutMs?: <span class="kw">number</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Public types</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">interface</span> ModelUsage {
+  promptTokens:     <span class="kw">number</span>;
+  completionTokens: <span class="kw">number</span>;
+  totalTokens:      <span class="kw">number</span>;
+}
+
+<span class="kw">export</span> <span class="kw">interface</span> ModelResult {
+  usage: ModelUsage;
+  <span class="cm">// ...extend as needed</span>
+}
+
+<span class="kw">export</span> <span class="kw">interface</span> InferenceResult {
+  success: <span class="kw">true</span>;
+  data:    ModelResult;
+  <span class="cm">/**
+   * True when billingPolicy = &quot;best_effort_billing&quot; and capture failed.
+   * Caller received a result; billing reconciliation is pending via DLQ.
+   * See &quot;billingPending vs billingUnresolved&quot; in the header.
+   */</span>
+  billingPending?: <span class="kw">boolean</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Error codes</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">type</span> ErrorCode =
+  | &quot;VALIDATION_FAILED&quot;       <span class="cm">// bad inputs — no_retry</span>
+  | &quot;DUPLICATE_JOB&quot;           <span class="cm">// atomic claim rejected — no_retry</span>
+  | &quot;INFRA_UNAVAILABLE&quot;       <span class="cm">// state store or billing infra down — retry_with_backoff</span>
+  | &quot;STATE_CONFLICT&quot;          <span class="cm">// CAS transition violated state machine invariant — no_retry + page</span>
+  | &quot;RESERVATION_FAILED&quot;      <span class="cm">// billing business rejection (insufficient credits etc.) — dlq_only</span>
+  | &quot;MODEL_TIMEOUT&quot;           <span class="cm">// AbortSignal fired — retry_with_backoff</span>
+  | &quot;MODEL_RATE_LIMITED&quot;      <span class="cm">// 429 — retry_with_backoff</span>
+  | &quot;MODEL_SERVER_ERROR&quot;      <span class="cm">// 5xx / connection reset — retry_with_backoff</span>
+  | &quot;MODEL_CLIENT_ERROR&quot;      <span class="cm">// 4xx (not 429) — no_retry</span>
+  | &quot;CAPTURE_FAILED&quot;;         <span class="cm">// billing capture rejected — dlq_only</span>
+
+<span class="kw">export</span> <span class="kw">type</span> RetryStrategy = &quot;no_retry&quot; | &quot;retry_with_backoff&quot; | &quot;dlq_only&quot;;
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Typed error hierarchy</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">class</span> InferenceError <span class="kw">extends</span> Error {
+  <span class="kw">public</span> <span class="kw">readonly</span> errorCode:        ErrorCode;
+  <span class="kw">public</span> <span class="kw">readonly</span> jobId:            <span class="kw">string</span>;
+  <span class="kw">public</span> <span class="kw">readonly</span> retryStrategy:    RetryStrategy;
+  <span class="cm">/**
+   * True whenever billing state is unresolved alongside this error:
+   *  - Model failed AND billing release also failed (credits stuck reserved), OR
+   *  - Capture failed under strict_billing (credits reserved, not released or captured).
+   * Primary errorCode is always the original business failure. This is a separate signal.
+   * See &quot;billingPending vs billingUnresolved&quot; in the header.
+   */</span>
+  <span class="kw">public</span> <span class="kw">readonly</span> billingUnresolved: <span class="kw">boolean</span>;
+
+  <span class="kw">constructor</span>(
+    message:           <span class="kw">string</span>,
+    errorCode:         ErrorCode,
+    jobId:             <span class="kw">string</span>,
+    retryStrategy:     RetryStrategy,
+    billingUnresolved  = <span class="kw">false</span>,
+    options?:          ErrorOptions,
+  ) {
+    <span class="kw">super</span>(message, options);
+    Object.<span class="fn">setPrototypeOf</span>(<span class="kw">this</span>, <span class="kw">new</span>.target.prototype);
+    <span class="kw">this</span>.name              = &quot;InferenceError&quot;;
+    <span class="kw">this</span>.errorCode         = errorCode;
+    <span class="kw">this</span>.jobId             = jobId;
+    <span class="kw">this</span>.retryStrategy     = retryStrategy;
+    <span class="kw">this</span>.billingUnresolved = billingUnresolved;
   }
+}
+
+<span class="kw">export</span> <span class="kw">class</span> BillingCompensationError <span class="kw">extends</span> Error {
+  <span class="kw">public</span> <span class="kw">readonly</span> jobId:             <span class="kw">string</span>;
+  <span class="kw">public</span> <span class="kw">readonly</span> originalErrorCode: ErrorCode;
+
+  <span class="kw">constructor</span>(jobId: <span class="kw">string</span>, originalErrorCode: ErrorCode, options?: ErrorOptions) {
+    <span class="kw">super</span>(<span class="str">`Billing release failed for job ${jobId}; pushed to DLQ`</span>, options);
+    Object.<span class="fn">setPrototypeOf</span>(<span class="kw">this</span>, <span class="kw">new</span>.target.prototype);
+    <span class="kw">this</span>.name              = &quot;BillingCompensationError&quot;;
+    <span class="kw">this</span>.jobId             = jobId;
+    <span class="kw">this</span>.originalErrorCode = originalErrorCode;
+  }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Versioned, typed DLQ payloads</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">interface</span> DlqBase {
+  schemaVersion: 1;
+  occurredAt:    <span class="kw">string</span>;            <span class="cm">// ISO-8601</span>
+  service:       &quot;inference-saga&quot;;
+  jobId:         <span class="kw">string</span>;
+  userId:        <span class="kw">string</span>;
+  modelId:       AllowedModelId;
+  environment:   <span class="kw">string</span>;
+  retriable:     <span class="kw">boolean</span>;
+}
+
+<span class="kw">interface</span> ReleaseFailed <span class="kw">extends</span> DlqBase {
+  <span class="kw">type</span>:           &quot;RELEASE_FAILED&quot;;
+  reservationId:  <span class="kw">string</span>;
+  modelErrorCode: ErrorCode;
+  releaseError:   ErrorMeta;
+}
+
+<span class="kw">interface</span> CaptureFailed <span class="kw">extends</span> DlqBase {
+  <span class="kw">type</span>:          &quot;CAPTURE_FAILED&quot;;
+  reservationId: <span class="kw">string</span>;
+  actualUsage:   ModelUsage;
+  captureError:  ErrorMeta;
+}
+
+<span class="kw">interface</span> TransitionFailed <span class="kw">extends</span> DlqBase {
+  <span class="kw">type</span>:            &quot;TRANSITION_FAILED&quot;;
+  attemptedFrom:   JobState | <span class="kw">null</span>;
+  attemptedTo:     JobState;
+  transitionError: ErrorMeta;
+}
+
+<span class="kw">export</span> <span class="kw">type</span> DlqPayload = ReleaseFailed | CaptureFailed | TransitionFailed;
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Job state machine (see header for full transition diagram)</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">type</span> JobState =
+  | &quot;CLAIMED&quot;
+  | &quot;RESERVED&quot;
+  | &quot;RESERVATION_FAILED&quot;
+  | &quot;INFERENCE_RUNNING&quot;
+  | &quot;INFERENCE_SUCCEEDED&quot;
+  | &quot;CAPTURED&quot;
+  | &quot;RELEASED&quot;
+  | &quot;RECONCILIATION_REQUIRED&quot;;
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Metrics labels — fully typed, no `as any`</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">interface</span> MetricLabels {
+  modelId:       AllowedModelId;
+  billingPolicy: BillingPolicy;
+  environment:   <span class="kw">string</span>;
+  errorCode?:    ErrorCode;
+  dlqType?:      DlqPayload[&quot;<span class="kw">type</span>&quot;];
+  fromState?:    JobState;
+  toState?:      JobState;
+}
+
+<span class="cm">// Subset for logger interface typing — avoids depending on loose logger signatures</span>
+<span class="kw">type</span> LogSeverity = &quot;info&quot; | &quot;warn&quot; | &quot;error&quot; | &quot;critical&quot;;
+
+<span class="kw">interface</span> StructuredLogger {
+  <span class="fn">info</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+  <span class="fn">warn</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+  <span class="fn">error</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+  <span class="fn">critical</span>(msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+  <span class="fn">log</span>(severity: LogSeverity, msg: <span class="kw">string</span>, meta?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;): <span class="kw">void</span>;
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Core saga</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span> <span class="fn">runInferenceJob</span>(
+  userId:  <span class="kw">string</span>,
+  payload: InferencePayload,
+  jobId:   <span class="kw">string</span>,
+  options: RunInferenceOptions = {},
+): Promise&lt;InferenceResult&gt; {
+
+  <span class="cm">// ── 1. Validate identity fields and options ───────────────────────────────</span>
+  <span class="kw">if</span> (!userId?.<span class="fn">trim</span>()) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(&quot;Missing userId&quot;, &quot;VALIDATION_FAILED&quot;, jobId ?? &quot;UNKNOWN&quot;, &quot;no_retry&quot;);
+  }
+  <span class="kw">if</span> (!jobId?.<span class="fn">trim</span>()) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(&quot;Missing jobId&quot;, &quot;VALIDATION_FAILED&quot;, &quot;UNKNOWN&quot;, &quot;no_retry&quot;);
+  }
+
+  <span class="kw">const</span> { billingPolicy = &quot;strict_billing&quot; } = options;
+  <span class="kw">const</span> timeoutMs = <span class="fn">resolveTimeout</span>(options.timeoutMs, jobId);
+
+  <span class="cm">// ── 2. Validate payload (Zod) ─────────────────────────────────────────────</span>
+  <span class="kw">const</span> parseResult = InferencePayloadSchema.<span class="fn">safeParse</span>(payload);
+  <span class="kw">if</span> (!parseResult.success) {
+    <span class="kw">const</span> issues = parseResult.error.issues.<span class="fn">map</span>(i =&gt; ({ path: i.path.<span class="fn">join</span>(&quot;.&quot;), message: i.message }));
+    loggerFactory.<span class="fn">create</span>({ userId, jobId }).<span class="fn">warn</span>(&quot;Payload validation failed&quot;, {
+      evt: &quot;VALIDATION_FAILED&quot;, issues,
+    });
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      &quot;Payload validation failed&quot;, &quot;VALIDATION_FAILED&quot;, jobId, &quot;no_retry&quot;,
+      <span class="kw">false</span>, { cause: <span class="kw">new</span> <span class="fn">Error</span>(JSON.<span class="fn">stringify</span>(issues)) },
+    );
+  }
+
+  <span class="kw">const</span> validPayload = parseResult.data;
+  <span class="kw">const</span> env = <span class="fn">resolveEnvironment</span>();
+  <span class="kw">const</span> baseLabels: MetricLabels = { modelId: validPayload.modelId, billingPolicy, environment: env };
+  <span class="cm">// loggerFactory.create() must return StructuredLogger. If it does not, update the</span>
+  <span class="cm">// factory&#x27;s return type rather than casting here — the interface is the contract.</span>
+  <span class="kw">const</span> logger: StructuredLogger = loggerFactory.<span class="fn">create</span>({ userId, jobId, modelId: validPayload.modelId, billingPolicy, environment: env });
+
+  <span class="cm">// ── 3. Atomic duplicate-execution guard ───────────────────────────────────</span>
+  <span class="kw">try</span> {
+    <span class="kw">await</span> jobStateStore.<span class="fn">claim</span>(jobId, CLAIM_LEASE_TTL_MS);
+  } <span class="kw">catch</span> (claimErr) {
+    <span class="kw">if</span> (claimErr <span class="kw">instanceof</span> JobAlreadyClaimedError) {
+      logger.<span class="fn">warn</span>(&quot;Duplicate execution blocked via atomic claim&quot;, { evt: &quot;DUPLICATE_JOB_BLOCKED&quot; });
+      <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(&quot;Job already claimed&quot;, &quot;DUPLICATE_JOB&quot;, jobId, &quot;no_retry&quot;);
+    }
+    logger.<span class="fn">error</span>(&quot;State store unavailable on claim&quot;, { evt: &quot;CLAIM_INFRA_FAILED&quot;, error: <span class="fn">toErrorMeta</span>(claimErr) });
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      &quot;Job state store unavailable&quot;, &quot;INFRA_UNAVAILABLE&quot;, jobId, &quot;retry_with_backoff&quot;,
+      <span class="kw">false</span>, { cause: claimErr },
+    );
+  }
+
+  <span class="cm">// ── 4. Server-side cost estimation ────────────────────────────────────────</span>
+  <span class="kw">const</span> expectedCost = <span class="fn">computeExpectedCost</span>(validPayload);
+
+  <span class="cm">// ── 5. Idempotent reservation ─────────────────────────────────────────────</span>
+  let reservation: Awaited&lt;ReturnType&lt;<span class="kw">typeof</span> billingService.reserve&gt;&gt;;
+
+  <span class="kw">const</span> reserveStart = <span class="fn">performanceNow</span>();
+  <span class="kw">try</span> {
+    reservation = <span class="kw">await</span> billingService.<span class="fn">reserve</span>({
+      userId,
+      amount:         expectedCost,
+      idempotencyKey: <span class="str">`res_${jobId}`</span>,
+    });
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;CLAIMED&quot;, &quot;RESERVED&quot;, logger, baseLabels, validPayload.modelId, userId, env);
+    <span class="fn">emitTiming</span>(&quot;billing.reserve.duration_ms&quot;, reserveStart, baseLabels);
+    metrics.<span class="fn">increment</span>(&quot;billing.reserve.success&quot;, baseLabels);
+    logger.<span class="fn">info</span>(&quot;Credits reserved&quot;, {
+      evt: &quot;CREDITS_RESERVED&quot;, reservationId: reservation.id,
+      expectedCost, currency: &quot;credits&quot;, durationMs: <span class="fn">performanceNow</span>() - reserveStart,
+    });
+  } <span class="kw">catch</span> (err) {
+    <span class="kw">if</span> (err <span class="kw">instanceof</span> InferenceError) <span class="kw">throw</span> err; <span class="cm">// re-throw from safeTransition</span>
+
+    <span class="kw">const</span> isBillingRejection = err <span class="kw">instanceof</span> BillingRejectedError;
+    metrics.<span class="fn">increment</span>(&quot;billing.reserve.failure&quot;, { ...baseLabels, errorCode: isBillingRejection ? &quot;RESERVATION_FAILED&quot; : &quot;INFRA_UNAVAILABLE&quot; });
+    logger.<span class="fn">error</span>(&quot;Reservation failed&quot;, {
+      evt: &quot;CREDITS_RESERVE_FAILED&quot;, isBillingRejection,
+      error: <span class="fn">toErrorMeta</span>(err), durationMs: <span class="fn">performanceNow</span>() - reserveStart,
+    });
+
+    <span class="cm">// Mark job state through safeTransition (consistent with all other transition sites).</span>
+    <span class="cm">// If this transition also fails, safeTransition routes it to DLQ and throws — the</span>
+    <span class="cm">// CLAIMED → RESERVATION_FAILED transition is treated as a first-class failure here</span>
+    <span class="cm">// because at this point no billing state exists to protect; job TTL expiry would</span>
+    <span class="cm">// also recover a stuck CLAIMED record, but explicit state is preferable for observability.</span>
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;CLAIMED&quot;, &quot;RESERVATION_FAILED&quot;, logger, baseLabels, validPayload.modelId, userId, env)
+      .<span class="kw">catch</span>(() =&gt; {
+        <span class="cm">// safeTransition already logged and DLQ-enqueued its own failure.</span>
+        <span class="cm">// We swallow here only to ensure the original reservation error is what throws.</span>
+      });
+
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      &quot;Could not reserve credits&quot;,
+      isBillingRejection ? &quot;RESERVATION_FAILED&quot; : &quot;INFRA_UNAVAILABLE&quot;,
+      jobId,
+      isBillingRejection ? &quot;dlq_only&quot; : &quot;retry_with_backoff&quot;,
+      <span class="kw">false</span>,
+      { cause: err },
+    );
+  }
+
+  <span class="cm">// ── 6. Model call with AbortController-enforced timeout ───────────────────</span>
+  let result: ModelResult;
+  <span class="kw">const</span> abortReason   = <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Model call timed out after ${timeoutMs}ms`</span>);
+  <span class="kw">const</span> controller    = <span class="kw">new</span> <span class="fn">AbortController</span>();
+  <span class="kw">const</span> timeoutHandle = <span class="fn">setTimeout</span>(() =&gt; controller.<span class="fn">abort</span>(abortReason), timeoutMs);
+
+  <span class="kw">const</span> modelStart = <span class="fn">performanceNow</span>();
+  <span class="kw">try</span> {
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;RESERVED&quot;, &quot;INFERENCE_RUNNING&quot;, logger, baseLabels, validPayload.modelId, userId, env);
+    result = <span class="kw">await</span> modelService.<span class="fn">call</span>(validPayload, { requestId: jobId, signal: controller.signal });
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;INFERENCE_RUNNING&quot;, &quot;INFERENCE_SUCCEEDED&quot;, logger, baseLabels, validPayload.modelId, userId, env);
+    <span class="fn">emitTiming</span>(&quot;model.call.duration_ms&quot;, modelStart, baseLabels);
+    metrics.<span class="fn">increment</span>(&quot;model.call.success&quot;, baseLabels);
+    logger.<span class="fn">info</span>(&quot;Model call succeeded&quot;, {
+      evt: &quot;MODEL_CALL_SUCCEEDED&quot;, usage: result.usage, durationMs: <span class="fn">performanceNow</span>() - modelStart,
+    });
+  } <span class="kw">catch</span> (modelErr) {
+    <span class="kw">if</span> (modelErr <span class="kw">instanceof</span> InferenceError) <span class="kw">throw</span> modelErr;
+
+    <span class="kw">const</span> errorCode = <span class="fn">classifyModelError</span>(modelErr);
+    <span class="fn">emitTiming</span>(&quot;model.call.duration_ms&quot;, modelStart, { ...baseLabels, errorCode });
+    metrics.<span class="fn">increment</span>(&quot;model.call.failure&quot;, { ...baseLabels, errorCode });
+    logger.<span class="fn">error</span>(&quot;Model call failed — releasing reservation&quot;, {
+      evt: &quot;MODEL_CALL_FAILED&quot;, errorCode, error: <span class="fn">toErrorMeta</span>(modelErr), durationMs: <span class="fn">performanceNow</span>() - modelStart,
+    });
+
+    <span class="kw">const</span> compensationErr = <span class="kw">await</span> <span class="fn">releaseOrCompensate</span>({
+      jobId, userId, modelId: validPayload.modelId, env,
+      reservationId: reservation.id, originalErrorCode: errorCode, logger, baseLabels,
+    });
+
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      &quot;Model call failed&quot;, errorCode, jobId, <span class="fn">retryStrategyFor</span>(errorCode),
+      compensationErr !== <span class="kw">null</span>,
+      { cause: compensationErr ?? modelErr },
+    );
+  } <span class="kw">finally</span> {
+    <span class="fn">clearTimeout</span>(timeoutHandle);
+  }
+
+  <span class="cm">// ── 7. Capture — charge actual usage only ────────────────────────────────</span>
+  <span class="kw">const</span> captureStart = <span class="fn">performanceNow</span>();
+  <span class="kw">try</span> {
+    <span class="kw">await</span> billingService.<span class="fn">capture</span>({
+      reservationId:  reservation.id,
+      actualUsage:    result.usage,
+      idempotencyKey: <span class="str">`cap_${jobId}`</span>,
+    });
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;INFERENCE_SUCCEEDED&quot;, &quot;CAPTURED&quot;, logger, baseLabels, validPayload.modelId, userId, env);
+    <span class="fn">emitTiming</span>(&quot;billing.capture.duration_ms&quot;, captureStart, baseLabels);
+    metrics.<span class="fn">increment</span>(&quot;billing.capture.success&quot;, baseLabels);
+    logger.<span class="fn">info</span>(&quot;Credits captured&quot;, {
+      evt: &quot;CREDITS_CAPTURED&quot;, actualUsage: result.usage, durationMs: <span class="fn">performanceNow</span>() - captureStart,
+    });
+  } <span class="kw">catch</span> (captureErr) {
+    <span class="kw">if</span> (captureErr <span class="kw">instanceof</span> InferenceError) <span class="kw">throw</span> captureErr;
+
+    metrics.<span class="fn">increment</span>(&quot;billing.capture.failure&quot;, baseLabels);
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;INFERENCE_SUCCEEDED&quot;, &quot;RECONCILIATION_REQUIRED&quot;, logger, baseLabels, validPayload.modelId, userId, env);
+
+    <span class="kw">const</span> enqueued = <span class="kw">await</span> <span class="fn">safeEnqueueDlq</span>({
+      schemaVersion: 1,
+      <span class="kw">type</span>:          &quot;CAPTURE_FAILED&quot;,
+      occurredAt:    <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toISOString</span>(),
+      service:       &quot;inference-saga&quot;,
+      jobId, userId, environment: env,
+      modelId:       validPayload.modelId,
+      reservationId: reservation.id,
+      actualUsage:   result.usage,
+      captureError:  <span class="fn">toErrorMeta</span>(captureErr),
+      retriable:     <span class="kw">true</span>,
+    }, logger, { ...baseLabels, dlqType: &quot;CAPTURE_FAILED&quot; });
+
+    logger.<span class="fn">error</span>(&quot;Capture failed&quot;, {
+      evt: &quot;CREDITS_CAPTURE_FAILED&quot;, error: <span class="fn">toErrorMeta</span>(captureErr),
+      dlqEnqueued: enqueued, durationMs: <span class="fn">performanceNow</span>() - captureStart,
+    });
+
+    <span class="kw">if</span> (billingPolicy === &quot;strict_billing&quot;) {
+      <span class="cm">// Do NOT return result. Model output must not be delivered without confirmed billing.</span>
+      <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+        &quot;Model succeeded but billing capture failed&quot;, &quot;CAPTURE_FAILED&quot;, jobId,
+        &quot;dlq_only&quot;, <span class="kw">true</span>, { cause: captureErr },
+      );
+    }
+
+    logger.<span class="fn">warn</span>(&quot;Returning success under best_effort_billing; billing reconciliation pending&quot;, {
+      evt: &quot;BILLING_PENDING_RECONCILIATION&quot;, jobId,
+    });
+    <span class="kw">return</span> { success: <span class="kw">true</span>, data: result, billingPending: <span class="kw">true</span> };
+  }
+
+  <span class="kw">return</span> { success: <span class="kw">true</span>, data: result };
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Compensation helper</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="cm">/**
+ * Attempts an idempotent release of the reservation.
+ * Returns null on clean release.
+ * Returns BillingCompensationError if release fails (never throws).
+ * Caller surfaces this via InferenceError.billingUnresolved.
+ */</span>
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">releaseOrCompensate</span>({
+  jobId, userId, modelId, env, reservationId, originalErrorCode, logger, baseLabels,
+}: {
+  jobId:             <span class="kw">string</span>;
+  userId:            <span class="kw">string</span>;
+  modelId:           AllowedModelId;
+  env:               <span class="kw">string</span>;
+  reservationId:     <span class="kw">string</span>;
+  originalErrorCode: ErrorCode;
+  logger:            StructuredLogger;
+  baseLabels:        MetricLabels;
+}): Promise&lt;BillingCompensationError | <span class="kw">null</span>&gt; {
+  <span class="kw">const</span> releaseStart = <span class="fn">performanceNow</span>();
+  <span class="kw">try</span> {
+    <span class="kw">await</span> billingService.<span class="fn">release</span>({ reservationId, idempotencyKey: <span class="str">`rel_${jobId}`</span> });
+    <span class="kw">await</span> <span class="fn">safeTransition</span>(jobId, &quot;INFERENCE_RUNNING&quot;, &quot;RELEASED&quot;, logger, baseLabels, modelId, userId, env);
+    <span class="fn">emitTiming</span>(&quot;billing.release.duration_ms&quot;, releaseStart, baseLabels);
+    metrics.<span class="fn">increment</span>(&quot;billing.release.success&quot;, baseLabels);
+    logger.<span class="fn">info</span>(&quot;Reservation released&quot;, {
+      evt: &quot;CREDITS_RELEASED&quot;, reservationId, durationMs: <span class="fn">performanceNow</span>() - releaseStart,
+    });
+    <span class="kw">return</span> <span class="kw">null</span>;
+  } <span class="kw">catch</span> (releaseErr) {
+    metrics.<span class="fn">increment</span>(&quot;billing.release.failure&quot;, { ...baseLabels, errorCode: originalErrorCode });
+
+    <span class="cm">// Intentionally best-effort here — unlike elsewhere in the saga, we do NOT route this</span>
+    <span class="cm">// through safeTransition. The reason: we are already inside a compensation path where</span>
+    <span class="cm">// billing is unresolved and a DLQ record is about to be enqueued. Escalating a secondary</span>
+    <span class="cm">// transition failure to STATE_CONFLICT or INFRA_UNAVAILABLE would obscure the original</span>
+    <span class="cm">// billing failure and could interrupt DLQ enqueue below. The DLQ record IS the durable</span>
+    <span class="cm">// reconciliation signal. State store consistency here is desirable but not load-bearing.</span>
+    <span class="kw">await</span> jobStateStore.<span class="fn">transition</span>(jobId, &quot;INFERENCE_RUNNING&quot;, &quot;RECONCILIATION_REQUIRED&quot;).<span class="kw">catch</span>(() =&gt; {});
+
+    <span class="kw">const</span> compensationError = <span class="kw">new</span> <span class="fn">BillingCompensationError</span>(jobId, originalErrorCode, { cause: releaseErr });
+
+    <span class="kw">await</span> <span class="fn">safeEnqueueDlq</span>({
+      schemaVersion:  1,
+      <span class="kw">type</span>:           &quot;RELEASE_FAILED&quot;,
+      occurredAt:     <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toISOString</span>(),
+      service:        &quot;inference-saga&quot;,
+      jobId, userId, environment: env, modelId, reservationId,
+      modelErrorCode: originalErrorCode,
+      releaseError:   <span class="fn">toErrorMeta</span>(releaseErr),
+      retriable:      <span class="kw">true</span>,
+    }, logger, { ...baseLabels, dlqType: &quot;RELEASE_FAILED&quot; });
+
+    logger.<span class="fn">error</span>(&quot;Release failed — pushed to DLQ&quot;, {
+      evt: &quot;CREDITS_RELEASE_FAILED&quot;, originalErrorCode,
+      releaseError: <span class="fn">toErrorMeta</span>(releaseErr), durationMs: <span class="fn">performanceNow</span>() - releaseStart,
+    });
+
+    <span class="kw">return</span> compensationError;
+  }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// State transition helper</span>
+<span class="cm">//</span>
+<span class="cm">// Wraps jobStateStore.transition with structured error handling.</span>
+<span class="cm">//</span>
+<span class="cm">// Two failure modes, deliberately distinct:</span>
+<span class="cm">//</span>
+<span class="cm">//   InvalidTransitionError  → STATE_CONFLICT / no_retry</span>
+<span class="cm">//     The state machine invariant was violated. This implies a bug, a concurrent</span>
+<span class="cm">//     worker that bypassed the claim, or a partially failed prior run. It is a</span>
+<span class="cm">//     paging-severity event and must NOT be retried — retrying would re-execute</span>
+<span class="cm">//     business logic against corrupted state.</span>
+<span class="cm">//</span>
+<span class="cm">//   StoreUnavailableError   → INFRA_UNAVAILABLE / retry_with_backoff</span>
+<span class="cm">//     The store is down. The saga step has not executed. Safe to retry.</span>
+<span class="cm">//</span>
+<span class="cm">// Both paths push a TRANSITION_FAILED DLQ record for reconciliation tracking.</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">safeTransition</span>(
+  jobId:      <span class="kw">string</span>,
+  <span class="kw">from</span>:       JobState,
+  to:         JobState,
+  logger:     StructuredLogger,
+  baseLabels: MetricLabels,
+  modelId:    AllowedModelId,
+  userId:     <span class="kw">string</span>,
+  env:        <span class="kw">string</span>,
+): Promise&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">try</span> {
+    <span class="kw">await</span> jobStateStore.<span class="fn">transition</span>(jobId, <span class="kw">from</span>, to);
+  } <span class="kw">catch</span> (transitionErr) {
+    <span class="kw">const</span> isConflict    = transitionErr <span class="kw">instanceof</span> InvalidTransitionError;
+    <span class="kw">const</span> errorCode: ErrorCode = isConflict ? &quot;STATE_CONFLICT&quot; : &quot;INFRA_UNAVAILABLE&quot;;
+    <span class="kw">const</span> retryStrategy: RetryStrategy = isConflict ? &quot;no_retry&quot; : &quot;retry_with_backoff&quot;;
+    <span class="kw">const</span> labels: MetricLabels = { ...baseLabels, errorCode, fromState: <span class="kw">from</span>, toState: to };
+
+    metrics.<span class="fn">increment</span>(&quot;job_state.transition.failure&quot;, labels);
+
+    <span class="cm">// STATE_CONFLICT is paging severity — it means the saga is in an unexpected state.</span>
+    <span class="kw">if</span> (isConflict) {
+      logger.<span class="fn">critical</span>(&quot;State machine invariant violated — STATE_CONFLICT&quot;, {
+        evt: &quot;STATE_TRANSITION_CONFLICT&quot;, <span class="kw">from</span>, to, error: <span class="fn">toErrorMeta</span>(transitionErr),
+      });
+    } <span class="kw">else</span> {
+      logger.<span class="fn">error</span>(&quot;State transition failed — INFRA_UNAVAILABLE&quot;, {
+        evt: &quot;STATE_TRANSITION_FAILED&quot;, <span class="kw">from</span>, to, error: <span class="fn">toErrorMeta</span>(transitionErr),
+      });
+    }
+
+    <span class="kw">await</span> <span class="fn">safeEnqueueDlq</span>({
+      schemaVersion:   1,
+      <span class="kw">type</span>:            &quot;TRANSITION_FAILED&quot;,
+      occurredAt:      <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toISOString</span>(),
+      service:         &quot;inference-saga&quot;,
+      jobId, userId, modelId, environment: env,
+      attemptedFrom:   <span class="kw">from</span>,
+      attemptedTo:     to,
+      transitionError: <span class="fn">toErrorMeta</span>(transitionErr),
+      retriable:       !isConflict,
+    }, logger, { ...baseLabels, dlqType: &quot;TRANSITION_FAILED&quot; });
+
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      <span class="str">`State transition ${from} → ${to} failed`</span>,
+      errorCode, jobId, retryStrategy,
+    );
+  }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// DLQ helper</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="cm">/**
+ * Best-effort DLQ push. Never throws.
+ * Returns true on success; false on failure (callers annotate logs).
+ */</span>
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">safeEnqueueDlq</span>(
+  payload: DlqPayload,
+  logger:  StructuredLogger,
+  labels:  MetricLabels,
+): Promise&lt;<span class="kw">boolean</span>&gt; {
+  <span class="kw">try</span> {
+    <span class="kw">await</span> dlqService.<span class="fn">enqueue</span>(payload);
+    metrics.<span class="fn">increment</span>(&quot;dlq.enqueue.success&quot;, { ...labels, dlqType: payload.<span class="kw">type</span> });
+    <span class="kw">return</span> <span class="kw">true</span>;
+  } <span class="kw">catch</span> (dlqErr) {
+    logger.<span class="fn">critical</span>(&quot;DLQ_ENQUEUE_FAILED — MANUAL RECONCILIATION REQUIRED&quot;, {
+      evt: &quot;DLQ_ENQUEUE_FAILED&quot;, jobId: payload.jobId, innerType: payload.<span class="kw">type</span>,
+      dlqError: <span class="fn">toErrorMeta</span>(dlqErr),
+    });
+    metrics.<span class="fn">increment</span>(&quot;dlq.enqueue.failure&quot;, { ...labels, dlqType: payload.<span class="kw">type</span> });
+    <span class="kw">return</span> <span class="kw">false</span>;
+  }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Error classification — structured, not regex-on-message</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="cm">/** Normalized error shape the modelService SDK must throw. */</span>
+<span class="kw">export</span> <span class="kw">interface</span> ModelServiceError <span class="kw">extends</span> Error {
+  statusCode?: <span class="kw">number</span>;
+  code?:       <span class="kw">string</span>;
+}
+
+<span class="kw">function</span> <span class="fn">classifyModelError</span>(err: <span class="kw">unknown</span>): ErrorCode {
+  <span class="kw">if</span> (err <span class="kw">instanceof</span> Error &amp;&amp; err.name === &quot;AbortError&quot;) <span class="kw">return</span> &quot;MODEL_TIMEOUT&quot;;
+
+  <span class="kw">const</span> e      = err <span class="kw">as</span> ModelServiceError;
+  <span class="kw">const</span> status = e?.statusCode;
+
+  <span class="kw">if</span> (status === 429)                          <span class="kw">return</span> &quot;MODEL_RATE_LIMITED&quot;;
+  <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 500)   <span class="kw">return</span> &quot;MODEL_SERVER_ERROR&quot;;
+  <span class="kw">if</span> (status !== undefined &amp;&amp; status &gt;= 400)   <span class="kw">return</span> &quot;MODEL_CLIENT_ERROR&quot;;
+  <span class="kw">if</span> (e?.code === &quot;ECONNRESET&quot; ||
+      e?.code === &quot;ENOTFOUND&quot;)                 <span class="kw">return</span> &quot;MODEL_SERVER_ERROR&quot;;
+
+  <span class="kw">return</span> &quot;MODEL_SERVER_ERROR&quot;; <span class="cm">// safe default: assume transient</span>
+}
+
+<span class="kw">function</span> <span class="fn">retryStrategyFor</span>(code: ErrorCode): RetryStrategy {
+  <span class="kw">switch</span> (code) {
+    <span class="kw">case</span> &quot;MODEL_TIMEOUT&quot;:
+    <span class="kw">case</span> &quot;MODEL_RATE_LIMITED&quot;:
+    <span class="kw">case</span> &quot;MODEL_SERVER_ERROR&quot;:
+    <span class="kw">case</span> &quot;INFRA_UNAVAILABLE&quot;:
+      <span class="kw">return</span> &quot;retry_with_backoff&quot;;
+    <span class="kw">case</span> &quot;MODEL_CLIENT_ERROR&quot;:
+    <span class="kw">case</span> &quot;VALIDATION_FAILED&quot;:
+    <span class="kw">case</span> &quot;DUPLICATE_JOB&quot;:
+    <span class="kw">case</span> &quot;STATE_CONFLICT&quot;:
+      <span class="kw">return</span> &quot;no_retry&quot;;
+    <span class="kw">case</span> &quot;CAPTURE_FAILED&quot;:
+    <span class="kw">case</span> &quot;RESERVATION_FAILED&quot;:
+      <span class="kw">return</span> &quot;dlq_only&quot;;
+  }
+}
+
+<span class="cm">// ---------------------------------------------------------------------------</span>
+<span class="cm">// Utilities</span>
+<span class="cm">// ---------------------------------------------------------------------------</span>
+
+<span class="cm">/** Structured error metadata for logs and DLQ payloads. Safe to serialize. */</span>
+<span class="kw">export</span> <span class="kw">interface</span> ErrorMeta {
+  message:  <span class="kw">string</span>;
+  name:     <span class="kw">string</span>;
+  code?:    <span class="kw">string</span>;
+  status?:  <span class="kw">number</span>;
+  hasStack: <span class="kw">boolean</span>;
+}
+
+<span class="kw">function</span> <span class="fn">toErrorMeta</span>(err: <span class="kw">unknown</span>): ErrorMeta {
+  <span class="kw">if</span> (err <span class="kw">instanceof</span> Error) {
+    <span class="kw">const</span> e = err <span class="kw">as</span> ModelServiceError;
+    <span class="kw">return</span> { message: e.message, name: e.name, code: e.code, status: e.statusCode, hasStack: <span class="fn">Boolean</span>(e.stack) };
+  }
+  <span class="kw">return</span> { message: <span class="fn">String</span>(err), name: &quot;UnknownError&quot;, hasStack: <span class="kw">false</span> };
+}
+
+<span class="cm">/** Monotonic clock for duration measurement; falls back to Date.now(). */</span>
+<span class="kw">function</span> <span class="fn">performanceNow</span>(): <span class="kw">number</span> {
+  <span class="kw">return</span> <span class="kw">typeof</span> performance !== &quot;undefined&quot; ? performance.<span class="fn">now</span>() : Date.<span class="fn">now</span>();
+}
+
+<span class="kw">function</span> <span class="fn">emitTiming</span>(name: <span class="kw">string</span>, startMs: <span class="kw">number</span>, labels: MetricLabels): <span class="kw">void</span> {
+  metrics.<span class="fn">timing</span>(name, <span class="fn">performanceNow</span>() - startMs, labels);
+}
+
+<span class="cm">/** Validates timeoutMs. Rejects NaN, negatives, zero, and out-of-range values. */</span>
+<span class="kw">function</span> <span class="fn">resolveTimeout</span>(timeoutMs: <span class="kw">number</span> | undefined, jobId: <span class="kw">string</span>): <span class="kw">number</span> {
+  <span class="kw">const</span> t = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  <span class="kw">if</span> (!Number.<span class="fn">isFinite</span>(t) || t &lt; MIN_TIMEOUT_MS || t &gt; MAX_TIMEOUT_MS) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InferenceError</span>(
+      <span class="str">`timeoutMs must be between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS}ms; got ${t}`</span>,
+      &quot;VALIDATION_FAILED&quot;, jobId, &quot;no_retry&quot;,
+    );
+  }
+  <span class="kw">return</span> t;
+}
+
+<span class="cm">/**
+ * Resolves the runtime environment label.
+ * Prefer an explicit app config (e.g. appConfig.environment) over process.env where possible.
+ */</span>
+<span class="kw">function</span> <span class="fn">resolveEnvironment</span>(): <span class="kw">string</span> {
+  <span class="kw">return</span> process.env.APP_ENV ?? process.env.NODE_ENV ?? &quot;<span class="kw">unknown</span>&quot;;
 }</pre>
           </div>
 
           <div class="card reveal">
             <div class="subtle-title">Example 03</div>
-            <h3>Voice gating concept</h3>
-            <pre class="code-block"><span class="cm">// Simplified streaming gate</span>
-<span class="kw">function</span> <span class="fn">handleAudioFrame</span>(frame) {
-  <span class="kw">if</span> (!<span class="fn">isSpeechDetected</span>(frame)) {
-    <span class="kw">return</span> <span class="str">"drop"</span>
+            <h3>Realtime WebRTC Speech Gate</h3>
+            <pre class="code-block scrollable"><span class="cm">/**
+ * =============================================================================
+ * Realtime WebRTC Speech Gate
+ * =============================================================================
+ *
+ * OVERVIEW
+ * -----------------------------------------------------------------------------
+ * This module implements a production-grade **speech admission gate** for
+ * realtime WebRTC audio pipelines used in conversational AI systems.
+ *
+ * Its responsibility is to decide — frame by frame — whether microphone audio
+ * should be:
+ *
+ *   • admitted immediately to the AI model
+ *   • buffered temporarily
+ *   • queued due to backpressure
+ *   • dropped (silence / overflow / invalid)
+ *
+ * The gate sits **between the microphone capture pipeline and the upstream
+ * inference transport**, ensuring that only high-quality, well-timed speech
+ * frames reach the model.
+ *
+ *
+ * WHY THIS EXISTS
+ * -----------------------------------------------------------------------------
+ * Real-time voice systems face several difficult constraints:
+ *
+ * 1. **Speech vs noise discrimination**
+ *    Microphones continuously emit frames even when nobody is speaking.
+ *    Sending every frame to the model wastes compute and increases latency.
+ *
+ * 2. **Assistant playback echo**
+ *    When the assistant is speaking, microphones often pick up the assistant’s
+ *    own audio output. Without protection this creates echo loops and causes
+ *    the model to respond to itself.
+ *
+ * 3. **Turn-taking correctness**
+ *    Human speech contains pauses, hesitations, and breathing. The system must
+ *    avoid prematurely cutting off speech while also minimizing latency.
+ *
+ * 4. **Network backpressure**
+ *    Model uplinks may temporarily stall. The system must maintain bounded
+ *    queues and deterministic overflow behaviour.
+ *
+ * 5. **Realtime guarantees**
+ *    The audio pipeline must remain stable even if observability hooks,
+ *    downstream transports, or lane resolvers fail.
+ *
+ *
+ * ARCHITECTURAL ROLE
+ * -----------------------------------------------------------------------------
+ * The SpeechGate sits in the audio pipeline as:
+ *
+ *      Microphone
+ *          │
+ *          ▼
+ *    Audio Frame Extraction
+ *          │
+ *          ▼
+ *      SpeechGate  ← (this module)
+ *          │
+ *          ▼
+ *   Model Uplink Transport
+ *          │
+ *          ▼
+ *      Realtime Model
+ *
+ * The gate is therefore responsible for:
+ *
+ *   • Voice activity detection (VAD)
+ *   • Turn state management
+ *   • Assistant playback protection
+ *   • Frame buffering and replay
+ *   • Queue backpressure control
+ *   • Deterministic uplink scheduling
+ *
+ *
+ * CORE SUBSYSTEMS
+ * -----------------------------------------------------------------------------
+ *
+ * 1. Voice Activity Detection (VAD)
+ *
+ *    Speech detection is based on **band-limited energy analysis** across the
+ *    human speech frequency band (typically 300Hz–3400Hz). Energy is compared
+ *    against an adaptive noise floor using a configurable ratio threshold.
+ *
+ *    Noise floor adapts using exponential smoothing:
+ *
+ *        noiseFloor = α * noiseFloor + (1-α) * bandEnergy
+ *
+ *    Frames are classified as speech when:
+ *
+ *        bandEnergy ≥ minBandEnergy
+ *        AND
+ *        bandEnergy / noiseFloor ≥ energyThresholdRatio
+ *
+ *
+ * 2. Hangover Window
+ *
+ *    Human speech often contains micro-pauses. To avoid cutting speech early,
+ *    a short **hangover window** continues admitting frames after speech energy
+ *    drops below threshold.
+ *
+ *
+ * 3. Assistant Playback Barrier
+ *
+ *    While the AI assistant is speaking, the gate **closes admission** to avoid
+ *    echo and feedback loops.
+ *
+ *    During this time frames may be:
+ *
+ *        • buffered
+ *        • dropped (if overflow)
+ *        • replayed once the barrier opens
+ *
+ *    Barrier closure is triggered by:
+ *
+ *        • response.created
+ *        • response.output_audio events
+ *        • response.done tail hold window
+ *
+ *
+ * 4. Held Audio Buffer
+ *
+ *    When the assistant barrier is active, speech frames can be temporarily
+ *    stored in a bounded buffer.
+ *
+ *    Once the barrier opens, the buffered frames are flushed upstream in a
+ *    single batch to preserve conversational continuity.
+ *
+ *
+ * 5. Uplink Queue
+ *
+ *    To prevent overload of the inference transport, frames pass through a
+ *    bounded queue with configurable overflow policies:
+ *
+ *        drop_oldest
+ *        drop_newest
+ *        reject
+ *
+ *
+ * 6. Deterministic State Machine
+ *
+ *    The gate tracks turn state:
+ *
+ *        idle
+ *        speaking
+ *        hangover
+ *        assistant_blocked
+ *
+ *    Transitions are emitted as observability events for telemetry and
+ *    debugging of conversational timing.
+ *
+ *
+ * RELIABILITY PRINCIPLES
+ * -----------------------------------------------------------------------------
+ *
+ * The implementation follows several safety guarantees:
+ *
+ *   • Observability must never break realtime audio flow.
+ *   • Invalid frames are rejected early with explicit error types.
+ *   • All queues and buffers are strictly bounded.
+ *   • Uplink calls are protected with timeouts.
+ *   • Barrier flush generations prevent duplicate replays.
+ *
+ *
+ * PERFORMANCE CHARACTERISTICS
+ * -----------------------------------------------------------------------------
+ *
+ * Designed for realtime WebRTC audio pipelines:
+ *
+ *   Typical frame size:        10–20 ms
+ *   Processing overhead:       &lt; 1 ms
+ *   Memory usage:              bounded buffers only
+ *   Latency impact:            negligible
+ *
+ *
+ * RESULT
+ * -----------------------------------------------------------------------------
+ *
+ * The SpeechGate ensures that conversational AI systems:
+ *
+ *   • avoid echo loops
+ *   • avoid sending silence to models
+ *   • maintain natural turn-taking
+ *   • remain stable under network backpressure
+ *
+ * while preserving the strict latency requirements of realtime speech
+ * interaction.
+ *
+ * =============================================================================
+ */</span><span class="cm">// realtimeWebRTCSpeechGate.ts</span>
+
+<span class="kw">import</span> <span class="kw">type</span> {
+  BarrierSnapshot,
+  Frame,
+  GateSnapshot,
+  HeldBufferSnapshot,
+  RealtimeServerEvent,
+  SpeechGate,
+  SpeechGateConfig,
+  SpeechGateDependencies,
+  SpeechGateEvent,
+  SpeechGateMetrics,
+  SpeechLane,
+  TurnState,
+  UplinkResult,
+} <span class="kw">from</span> &quot;./types&quot;;
+
+<span class="kw">const</span> DEFAULTS: SpeechGateConfig = {
+  speechBandLowHz: 300,
+  speechBandHighHz: 3400,
+  energyThresholdRatio: 2.2,
+  noiseAdaptationAlpha: 0.96,
+  minBandEnergy: 6,
+  hangoverMs: 220,
+
+  assistantTailHoldMs: 180,
+  maxHoldBufferMs: 2200,
+  maxHeldFrames: 80,
+
+  uplinkTimeoutMs: 120,
+  maxQueueDepth: 4,
+  maxConcurrentUplinks: 1,
+  overflowPolicy: &quot;drop_oldest&quot;,
+
+  emitStateTransitions: <span class="kw">true</span>,
+  streamLabel: &quot;<span class="kw">default</span>&quot;,
+  bufferDuringAssistantPlayback: <span class="kw">true</span>,
+};
+
+<span class="kw">class</span> SpeechGateError <span class="kw">extends</span> Error {
+  <span class="kw">readonly</span> code: <span class="kw">string</span>;
+
+  <span class="kw">constructor</span>(code: <span class="kw">string</span>, message: <span class="kw">string</span>) {
+    <span class="kw">super</span>(message);
+    <span class="kw">this</span>.name = &quot;SpeechGateError&quot;;
+    <span class="kw">this</span>.code = code;
+  }
+}
+
+<span class="kw">class</span> InvalidFrameError <span class="kw">extends</span> SpeechGateError {
+  <span class="kw">constructor</span>(message: <span class="kw">string</span>) {
+    <span class="kw">super</span>(&quot;INVALID_FRAME&quot;, message);
+  }
+}
+
+<span class="kw">class</span> UplinkTimeoutError <span class="kw">extends</span> SpeechGateError {
+  <span class="kw">constructor</span>(timeoutMs: <span class="kw">number</span>) {
+    <span class="kw">super</span>(&quot;UPLINK_TIMEOUT&quot;, <span class="str">`Uplink timed out after ${timeoutMs}ms`</span>);
+  }
+}
+
+<span class="kw">function</span> <span class="fn">nowMs</span>(): <span class="kw">number</span> {
+  <span class="kw">return</span> Date.<span class="fn">now</span>();
+}
+
+<span class="kw">function</span> <span class="fn">emit</span>(
+  onEvent: SpeechGateDependencies[&quot;onEvent&quot;],
+  event: SpeechGateEvent
+): <span class="kw">void</span> {
+  <span class="kw">if</span> (!onEvent) <span class="kw">return</span>;
+
+  <span class="kw">try</span> {
+    <span class="fn">onEvent</span>(event);
+  } <span class="kw">catch</span> {
+    <span class="cm">// Observability must not break realtime flow.</span>
+  }
+}
+
+<span class="kw">function</span> <span class="fn">emitError</span>(
+  onEvent: SpeechGateDependencies[&quot;onEvent&quot;],
+  streamLabel: <span class="kw">string</span>,
+  code: <span class="kw">string</span>,
+  message: <span class="kw">string</span>,
+  context?: Record&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;
+): <span class="kw">void</span> {
+  <span class="fn">emit</span>(onEvent, {
+    <span class="kw">type</span>: &quot;speech_gate.error&quot;,
+    atMs: <span class="fn">nowMs</span>(),
+    streamLabel,
+    code,
+    message,
+    context,
+  });
+}
+
+<span class="kw">function</span> withTimeout&lt;T&gt;(promise: Promise&lt;T&gt;, timeoutMs: <span class="kw">number</span>): Promise&lt;T&gt; {
+  let timerId: ReturnType&lt;<span class="kw">typeof</span> setTimeout&gt; | undefined;
+
+  <span class="kw">return</span> <span class="kw">new</span> Promise&lt;T&gt;((resolve, reject) =&gt; {
+    timerId = <span class="fn">setTimeout</span>(() =&gt; {
+      <span class="fn">reject</span>(<span class="kw">new</span> <span class="fn">UplinkTimeoutError</span>(timeoutMs));
+    }, timeoutMs);
+
+    promise.<span class="fn">then</span>(
+      (value) =&gt; {
+        <span class="kw">if</span> (timerId) <span class="fn">clearTimeout</span>(timerId);
+        <span class="fn">resolve</span>(value);
+      },
+      (error) =&gt; {
+        <span class="kw">if</span> (timerId) <span class="fn">clearTimeout</span>(timerId);
+        <span class="fn">reject</span>(error);
+      }
+    );
+  });
+}
+
+<span class="kw">function</span> <span class="fn">validateFrame</span>(frame: Frame): <span class="kw">void</span> {
+  <span class="kw">if</span> (!frame || <span class="kw">typeof</span> frame !== &quot;object&quot;) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(&quot;Frame must be an object&quot;);
   }
 
-  <span class="kw">const</span> lane = <span class="fn">resolveLanguageLane</span>(activeLanguages)
-  <span class="kw">return</span> <span class="fn">forwardToRealtimeInference</span>(frame, lane)
+  <span class="kw">if</span> (
+    !Array.<span class="fn">isArray</span>(frame.freqData) &amp;&amp;
+    !(frame.freqData <span class="kw">instanceof</span> Uint8Array)
+  ) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(&quot;freqData must be an array or Uint8Array&quot;);
+  }
+
+  <span class="kw">if</span> (!Number.<span class="fn">isFinite</span>(frame.fftSize) || frame.fftSize &lt;= 0) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(&quot;fftSize must be a positive finite <span class="kw">number</span>&quot;);
+  }
+
+  <span class="kw">if</span> (!Number.<span class="fn">isFinite</span>(frame.sampleRate) || frame.sampleRate &lt;= 0) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(&quot;sampleRate must be a positive finite <span class="kw">number</span>&quot;);
+  }
+
+  <span class="kw">if</span> (
+    !Number.<span class="fn">isFinite</span>(frame.frameDurationMs) ||
+    frame.frameDurationMs &lt;= 0
+  ) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(
+      &quot;frameDurationMs must be a positive finite <span class="kw">number</span>&quot;
+    );
+  }
+
+  <span class="kw">if</span> (frame.raw == <span class="kw">null</span>) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(&quot;raw payload is required&quot;);
+  }
+
+  <span class="kw">if</span> (
+    frame.timestampMs != <span class="kw">null</span> &amp;&amp;
+    (!Number.<span class="fn">isFinite</span>(frame.timestampMs) || frame.timestampMs &lt;= 0)
+  ) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">InvalidFrameError</span>(
+      &quot;timestampMs must be a positive finite <span class="kw">number</span> when provided&quot;
+    );
+  }
+}
+
+<span class="kw">function</span> <span class="fn">computeSpeechBandEnergy</span>(
+  freqData: Uint8Array | <span class="kw">number</span>[],
+  fftSize: <span class="kw">number</span>,
+  sampleRate: <span class="kw">number</span>,
+  lowHz: <span class="kw">number</span>,
+  highHz: <span class="kw">number</span>
+): <span class="kw">number</span> {
+  <span class="kw">const</span> binSizeHz = sampleRate / fftSize;
+  <span class="kw">const</span> startBin = Math.<span class="fn">max</span>(0, Math.<span class="fn">floor</span>(lowHz / binSizeHz));
+  <span class="kw">const</span> endBin = Math.<span class="fn">min</span>(freqData.length - 1, Math.<span class="fn">floor</span>(highHz / binSizeHz));
+
+  <span class="kw">if</span> (endBin &lt; startBin) {
+    <span class="kw">return</span> 0;
+  }
+
+  let sum = 0;
+  let count = 0;
+
+  <span class="kw">for</span> (let i = startBin; i &lt;= endBin; i++) {
+    sum += <span class="fn">Number</span>(freqData[i]) || 0;
+    count++;
+  }
+
+  <span class="kw">return</span> count &gt; 0 ? sum / count : 0;
+}
+
+<span class="kw">function</span> <span class="fn">createHeldAudioBuffer</span>(config: SpeechGateConfig) {
+  <span class="kw">const</span> frames: Frame[] = [];
+  let totalDurationMs = 0;
+  let flushGeneration = 0;
+
+  <span class="kw">function</span> <span class="fn">snapshot</span>(): HeldBufferSnapshot {
+    <span class="kw">return</span> {
+      frameCount: frames.length,
+      totalDurationMs,
+      flushGeneration,
+    };
+  }
+
+  <span class="kw">function</span> <span class="fn">push</span>(frame: Frame): <span class="kw">boolean</span> {
+    <span class="kw">const</span> incomingDuration = frame.frameDurationMs;
+
+    <span class="kw">if</span> (config.overflowPolicy === &quot;reject&quot;) {
+      <span class="kw">if</span> (
+        frames.length &gt;= config.maxHeldFrames ||
+        totalDurationMs + incomingDuration &gt; config.maxHoldBufferMs
+      ) {
+        <span class="kw">return</span> <span class="kw">false</span>;
+      }
+    }
+
+    <span class="kw">while</span> (
+      frames.length &gt; 0 &amp;&amp;
+      (frames.length &gt;= config.maxHeldFrames ||
+        totalDurationMs + incomingDuration &gt; config.maxHoldBufferMs)
+    ) {
+      <span class="kw">if</span> (config.overflowPolicy === &quot;drop_oldest&quot;) {
+        <span class="kw">const</span> dropped = frames.<span class="fn">shift</span>();
+        totalDurationMs -= dropped?.frameDurationMs ?? 0;
+        <span class="kw">continue</span>;
+      }
+
+      <span class="kw">if</span> (config.overflowPolicy === &quot;drop_newest&quot; || config.overflowPolicy === &quot;reject&quot;) {
+        <span class="kw">return</span> <span class="kw">false</span>;
+      }
+    }
+
+    frames.<span class="fn">push</span>(frame);
+    totalDurationMs += incomingDuration;
+    <span class="kw">return</span> <span class="kw">true</span>;
+  }
+
+  <span class="kw">function</span> <span class="fn">drain</span>(): { generation: <span class="kw">number</span>; frames: Frame[] } {
+    <span class="kw">const</span> batch = frames.<span class="fn">splice</span>(0, frames.length);
+    totalDurationMs = 0;
+    flushGeneration += 1;
+    <span class="kw">return</span> {
+      generation: flushGeneration,
+      frames: batch,
+    };
+  }
+
+  <span class="kw">function</span> <span class="fn">clear</span>(): <span class="kw">void</span> {
+    frames.length = 0;
+    totalDurationMs = 0;
+  }
+
+  <span class="kw">return</span> {
+    push,
+    drain,
+    clear,
+    snapshot,
+  };
+}
+
+<span class="kw">function</span> <span class="fn">createResponsePlaybackBarrier</span>(args: {
+  assistantTailHoldMs: <span class="kw">number</span>;
+  streamLabel: <span class="kw">string</span>;
+  isAssistantPlaybackActive?: () =&gt; <span class="kw">boolean</span>;
+  onEvent?: (event: SpeechGateEvent) =&gt; <span class="kw">void</span>;
+}) {
+  let activeResponseId: <span class="kw">string</span> | <span class="kw">null</span> = <span class="kw">null</span>;
+  let responseCreatedAtMs = 0;
+  let responseDoneAtMs = 0;
+  let lastAssistantActivityAtMs = 0;
+  let doneSeenForActiveResponse = <span class="kw">false</span>;
+
+  <span class="kw">function</span> <span class="fn">noteAssistantActivity</span>(atMs: <span class="kw">number</span> = <span class="fn">nowMs</span>()): <span class="kw">void</span> {
+    lastAssistantActivityAtMs = atMs;
+  }
+
+  <span class="kw">function</span> <span class="fn">onRealtimeEvent</span>(serverEvent: RealtimeServerEvent): <span class="kw">void</span> {
+    <span class="kw">const</span> <span class="kw">type</span> = <span class="fn">String</span>(serverEvent?.<span class="kw">type</span> ?? &quot;&quot;);
+    <span class="kw">const</span> atMs = <span class="fn">nowMs</span>();
+
+    <span class="kw">switch</span> (<span class="kw">type</span>) {
+      <span class="kw">case</span> &quot;response.created&quot;: {
+        <span class="kw">const</span> response =
+          &quot;response&quot; <span class="kw">in</span> serverEvent
+            ? (serverEvent.response <span class="kw">as</span> { id?: <span class="kw">string</span> } | undefined)
+            : undefined;
+
+        activeResponseId =
+          response?.id ??
+          (<span class="kw">typeof</span> serverEvent.response_id === &quot;<span class="kw">string</span>&quot;
+            ? serverEvent.response_id
+            : <span class="kw">null</span>);
+
+        responseCreatedAtMs = atMs;
+        responseDoneAtMs = 0;
+        doneSeenForActiveResponse = <span class="kw">false</span>;
+        <span class="fn">noteAssistantActivity</span>(atMs);
+
+        <span class="fn">emit</span>(args.onEvent, {
+          <span class="kw">type</span>: &quot;speech_gate.barrier_response_created&quot;,
+          atMs,
+          streamLabel: args.streamLabel,
+          responseId: activeResponseId,
+        });
+        <span class="kw">return</span>;
+      }
+
+      <span class="kw">case</span> &quot;response.output_audio.delta&quot;:
+      <span class="kw">case</span> &quot;response.output_audio.done&quot;:
+      <span class="kw">case</span> &quot;response.output_audio_transcript.delta&quot;:
+      <span class="kw">case</span> &quot;response.output_text.delta&quot;: {
+        <span class="fn">noteAssistantActivity</span>(atMs);
+        <span class="kw">return</span>;
+      }
+
+      <span class="kw">case</span> &quot;response.done&quot;: {
+        <span class="kw">const</span> response =
+          &quot;response&quot; <span class="kw">in</span> serverEvent
+            ? (serverEvent.response <span class="kw">as</span> { id?: <span class="kw">string</span> } | undefined)
+            : undefined;
+
+        <span class="kw">const</span> responseId =
+          response?.id ??
+          (<span class="kw">typeof</span> serverEvent.response_id === &quot;<span class="kw">string</span>&quot;
+            ? serverEvent.response_id
+            : activeResponseId);
+
+        <span class="kw">if</span> (activeResponseId === <span class="kw">null</span> || responseId === activeResponseId) {
+          doneSeenForActiveResponse = <span class="kw">true</span>;
+          responseDoneAtMs = atMs;
+          <span class="fn">noteAssistantActivity</span>(atMs);
+
+          <span class="fn">emit</span>(args.onEvent, {
+            <span class="kw">type</span>: &quot;speech_gate.barrier_response_done&quot;,
+            atMs,
+            streamLabel: args.streamLabel,
+            responseId,
+          });
+        }
+        <span class="kw">return</span>;
+      }
+
+      <span class="kw">case</span> &quot;output_audio_buffer.cleared&quot;: {
+        doneSeenForActiveResponse = <span class="kw">true</span>;
+        responseDoneAtMs = atMs;
+        <span class="fn">noteAssistantActivity</span>(atMs);
+        <span class="kw">return</span>;
+      }
+
+      <span class="kw">default</span>:
+        <span class="kw">return</span>;
+    }
+  }
+
+  <span class="kw">function</span> <span class="fn">isClosed</span>(referenceMs: <span class="kw">number</span> = <span class="fn">nowMs</span>()): <span class="kw">boolean</span> {
+    <span class="kw">const</span> playbackActive = args.isAssistantPlaybackActive?.() ?? <span class="kw">false</span>;
+    <span class="kw">const</span> withinTailHold =
+      referenceMs - lastAssistantActivityAtMs &lt;= args.assistantTailHoldMs;
+
+    <span class="kw">if</span> (activeResponseId &amp;&amp; !doneSeenForActiveResponse) <span class="kw">return</span> <span class="kw">true</span>;
+    <span class="kw">if</span> (playbackActive) <span class="kw">return</span> <span class="kw">true</span>;
+    <span class="kw">if</span> (withinTailHold) <span class="kw">return</span> <span class="kw">true</span>;
+
+    <span class="kw">return</span> <span class="kw">false</span>;
+  }
+
+  <span class="kw">function</span> <span class="fn">markAssistantPlaybackActivity</span>(referenceMs: <span class="kw">number</span> = <span class="fn">nowMs</span>()): <span class="kw">void</span> {
+    <span class="fn">noteAssistantActivity</span>(referenceMs);
+  }
+
+  <span class="kw">function</span> <span class="fn">clearCompletedResponseIfDrained</span>(referenceMs: <span class="kw">number</span> = <span class="fn">nowMs</span>()): <span class="kw">boolean</span> {
+    <span class="kw">if</span> (<span class="fn">isClosed</span>(referenceMs)) <span class="kw">return</span> <span class="kw">false</span>;
+
+    activeResponseId = <span class="kw">null</span>;
+    responseCreatedAtMs = 0;
+    responseDoneAtMs = 0;
+    doneSeenForActiveResponse = <span class="kw">false</span>;
+    <span class="kw">return</span> <span class="kw">true</span>;
+  }
+
+  <span class="kw">function</span> <span class="fn">snapshot</span>(referenceMs: <span class="kw">number</span> = <span class="fn">nowMs</span>()): BarrierSnapshot {
+    <span class="kw">return</span> {
+      activeResponseId,
+      responseCreatedAtMs,
+      responseDoneAtMs,
+      doneSeenForActiveResponse,
+      lastAssistantActivityAtMs,
+      playbackActive: args.isAssistantPlaybackActive?.() ?? <span class="kw">false</span>,
+      closed: <span class="fn">isClosed</span>(referenceMs),
+    };
+  }
+
+  <span class="kw">return</span> {
+    onRealtimeEvent,
+    isClosed,
+    markAssistantPlaybackActivity,
+    clearCompletedResponseIfDrained,
+    snapshot,
+  };
+}
+
+<span class="kw">export</span> <span class="kw">function</span> <span class="fn">createRealtimeWebRTCSpeechGate</span>(
+  options: Partial&lt;SpeechGateConfig&gt; = {},
+  deps: SpeechGateDependencies
+): SpeechGate {
+  <span class="kw">if</span> (<span class="kw">typeof</span> deps.admitUplinkFrame !== &quot;<span class="kw">function</span>&quot;) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">TypeError</span>(&quot;admitUplinkFrame must be a <span class="kw">function</span>&quot;);
+  }
+
+  <span class="kw">if</span> (<span class="kw">typeof</span> deps.resolveLane !== &quot;<span class="kw">function</span>&quot;) {
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">TypeError</span>(&quot;resolveLane must be a <span class="kw">function</span>&quot;);
+  }
+
+  <span class="kw">const</span> config: SpeechGateConfig = { ...DEFAULTS, ...options };
+
+  let closed = <span class="kw">false</span>;
+  let noiseFloor = 0;
+  let lastSpeechAtMs = 0;
+  let turnState: TurnState = &quot;idle&quot;;
+
+  <span class="kw">const</span> uplinkQueue: Array&lt;{
+    frame: Frame;
+    lane: SpeechLane;
+    queuedAtMs: <span class="kw">number</span>;
+  }&gt; = [];
+
+  let inflight = 0;
+  let flushInProgress = <span class="kw">false</span>;
+  let highestCompletedFlushGeneration = 0;
+
+  <span class="kw">const</span> heldAudio = <span class="fn">createHeldAudioBuffer</span>(config);
+
+  <span class="kw">const</span> barrier = <span class="fn">createResponsePlaybackBarrier</span>({
+    assistantTailHoldMs: config.assistantTailHoldMs,
+    streamLabel: config.streamLabel,
+    isAssistantPlaybackActive: deps.isAssistantPlaybackActive,
+    onEvent: deps.onEvent,
+  });
+
+  <span class="kw">const</span> metrics: SpeechGateMetrics = {
+    framesTotal: 0,
+    framesSpeechDetected: 0,
+    framesSilenceDetected: 0,
+
+    framesDroppedSilence: 0,
+    framesDroppedInvalid: 0,
+    framesDroppedGateClosed: 0,
+    framesDroppedQueueBackpressure: 0,
+
+    heldFramesAccepted: 0,
+    heldFramesDropped: 0,
+    heldFlushes: 0,
+    heldFlushFrames: 0,
+
+    framesAdmittedImmediate: 0,
+    framesQueued: 0,
+
+    uplinksSucceeded: 0,
+    uplinksErrored: 0,
+    uplinksTimedOut: 0,
+    totalUplinkLatencyMs: 0,
+
+    speechStartEvents: 0,
+    speechEndEvents: 0,
+    barrierBlockedFrames: 0,
+    laneResolutionFailures: 0,
+  };
+
+  <span class="kw">function</span> <span class="fn">transitionTurnState</span>(
+    nextState: TurnState,
+    reason: <span class="kw">string</span>,
+    frame?: Frame
+  ): <span class="kw">void</span> {
+    <span class="kw">if</span> (turnState === nextState) <span class="kw">return</span>;
+
+    <span class="kw">const</span> previousState = turnState;
+    turnState = nextState;
+
+    <span class="kw">if</span> (config.emitStateTransitions) {
+      <span class="fn">emit</span>(deps.onEvent, {
+        <span class="kw">type</span>: &quot;speech_gate.state_transition&quot;,
+        atMs: <span class="fn">nowMs</span>(),
+        streamLabel: config.streamLabel,
+        previousState,
+        nextState,
+        reason,
+        sessionId: frame?.sessionId ?? <span class="kw">null</span>,
+        streamId: frame?.streamId ?? <span class="kw">null</span>,
+        speakerId: frame?.speakerId ?? <span class="kw">null</span>,
+      });
+    }
+
+    <span class="kw">if</span> (nextState === &quot;speaking&quot;) {
+      metrics.speechStartEvents++;
+    }
+
+    <span class="kw">if</span> (previousState === &quot;speaking&quot; &amp;&amp; nextState !== &quot;speaking&quot;) {
+      metrics.speechEndEvents++;
+    }
+  }
+
+  <span class="kw">function</span> <span class="fn">classifySpeech</span>(frame: Frame): {
+    isSpeech: <span class="kw">boolean</span>;
+    bandEnergy: <span class="kw">number</span>;
+    ratio: <span class="kw">number</span>;
+  } {
+    <span class="kw">const</span> bandEnergy = <span class="fn">computeSpeechBandEnergy</span>(
+      frame.freqData,
+      frame.fftSize,
+      frame.sampleRate,
+      config.speechBandLowHz,
+      config.speechBandHighHz
+    );
+
+    <span class="kw">if</span> (noiseFloor === 0) {
+      noiseFloor = Math.<span class="fn">max</span>(bandEnergy, 1);
+    } <span class="kw">else</span> {
+      noiseFloor =
+        config.noiseAdaptationAlpha * noiseFloor +
+        (1 - config.noiseAdaptationAlpha) * bandEnergy;
+    }
+
+    <span class="kw">const</span> safeNoiseFloor = Math.<span class="fn">max</span>(noiseFloor, 1e-6);
+    <span class="kw">const</span> ratio = bandEnergy / safeNoiseFloor;
+    <span class="kw">const</span> isSpeech =
+      bandEnergy &gt;= config.minBandEnergy &amp;&amp;
+      ratio &gt;= config.energyThresholdRatio;
+
+    <span class="kw">return</span> { isSpeech, bandEnergy, ratio };
+  }
+
+  <span class="kw">function</span> <span class="fn">resolveLaneSafe</span>(args: {
+    frame: Frame;
+    isSpeech: <span class="kw">boolean</span>;
+    speaking: <span class="kw">boolean</span>;
+    assistantBlocked: <span class="kw">boolean</span>;
+    replayedFromHoldBuffer: <span class="kw">boolean</span>;
+  }): SpeechLane | <span class="kw">null</span> {
+    <span class="kw">try</span> {
+      <span class="kw">return</span> deps.<span class="fn">resolveLane</span>(args);
+    } <span class="kw">catch</span> (error) {
+      metrics.laneResolutionFailures++;
+      <span class="fn">emitError</span>(
+        deps.onEvent,
+        config.streamLabel,
+        &quot;LANE_RESOLUTION_FAILED&quot;,
+        &quot;Lane resolution failed&quot;,
+        {
+          error,
+          sessionId: args.frame.sessionId ?? <span class="kw">null</span>,
+          streamId: args.frame.streamId ?? <span class="kw">null</span>,
+          speakerId: args.frame.speakerId ?? <span class="kw">null</span>,
+        }
+      );
+      <span class="kw">return</span> <span class="kw">null</span>;
+    }
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">performUplink</span>(
+    frame: Frame,
+    lane: SpeechLane
+  ): Promise&lt;UplinkResult&gt; {
+    <span class="kw">const</span> startedAtMs = <span class="fn">nowMs</span>();
+
+    <span class="kw">try</span> {
+      <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">withTimeout</span>(
+        deps.<span class="fn">admitUplinkFrame</span>(frame, lane),
+        config.uplinkTimeoutMs
+      );
+
+      <span class="kw">const</span> latencyMs = <span class="fn">nowMs</span>() - startedAtMs;
+      metrics.uplinksSucceeded++;
+      metrics.totalUplinkLatencyMs += latencyMs;
+
+      <span class="kw">return</span> {
+        status: &quot;admitted&quot;,
+        reason: &quot;speech&quot;,
+        lane,
+        latencyMs,
+        result,
+      };
+    } <span class="kw">catch</span> (error) {
+      <span class="kw">const</span> latencyMs = <span class="fn">nowMs</span>() - startedAtMs;
+
+      <span class="kw">if</span> (error <span class="kw">instanceof</span> UplinkTimeoutError) {
+        metrics.uplinksTimedOut++;
+        <span class="fn">emitError</span>(
+          deps.onEvent,
+          config.streamLabel,
+          error.code,
+          error.message,
+          { lane, latencyMs }
+        );
+
+        <span class="kw">return</span> {
+          status: &quot;rejected&quot;,
+          reason: &quot;uplink_timeout&quot;,
+          lane,
+          latencyMs,
+          error,
+        };
+      }
+
+      metrics.uplinksErrored++;
+      <span class="fn">emitError</span>(
+        deps.onEvent,
+        config.streamLabel,
+        &quot;UPLINK_ERROR&quot;,
+        &quot;Uplink failed&quot;,
+        { lane, latencyMs, error }
+      );
+
+      <span class="kw">return</span> {
+        status: &quot;rejected&quot;,
+        reason: &quot;uplink_error&quot;,
+        lane,
+        latencyMs,
+        error: error <span class="kw">instanceof</span> Error ? error : <span class="kw">new</span> <span class="fn">Error</span>(<span class="fn">String</span>(error)),
+      };
+    }
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">performBufferedFlush</span>(
+    frames: Frame[],
+    lane: SpeechLane,
+    generation: <span class="kw">number</span>
+  ): Promise&lt;UplinkResult&gt; {
+    <span class="kw">if</span> (frames.length === 0) {
+      <span class="kw">return</span> {
+        status: &quot;noop&quot;,
+        reason: &quot;empty_flush&quot;,
+        lane,
+      };
+    }
+
+    <span class="kw">if</span> (generation &lt;= highestCompletedFlushGeneration) {
+      <span class="kw">return</span> {
+        status: &quot;noop&quot;,
+        reason: &quot;stale_flush_generation&quot;,
+        lane,
+      };
+    }
+
+    flushInProgress = <span class="kw">true</span>;
+
+    <span class="kw">try</span> {
+      let result: <span class="kw">unknown</span>;
+
+      <span class="kw">if</span> (<span class="kw">typeof</span> deps.admitBufferedFrames === &quot;<span class="kw">function</span>&quot;) {
+        result = <span class="kw">await</span> <span class="fn">withTimeout</span>(
+          deps.<span class="fn">admitBufferedFrames</span>(frames, lane, generation),
+          Math.<span class="fn">max</span>(config.uplinkTimeoutMs * 2, 250)
+        );
+      } <span class="kw">else</span> {
+        <span class="kw">const</span> outputs: UplinkResult[] = [];
+        <span class="kw">for</span> (<span class="kw">const</span> frame <span class="kw">of</span> frames) {
+          outputs.<span class="fn">push</span>(<span class="kw">await</span> <span class="fn">performUplink</span>(frame, lane));
+        }
+        result = outputs;
+      }
+
+      highestCompletedFlushGeneration = generation;
+      metrics.heldFlushes++;
+      metrics.heldFlushFrames += frames.length;
+
+      <span class="fn">emit</span>(deps.onEvent, {
+        <span class="kw">type</span>: &quot;speech_gate.held_flush_complete&quot;,
+        atMs: <span class="fn">nowMs</span>(),
+        streamLabel: config.streamLabel,
+        lane,
+        generation,
+        flushedFrames: frames.length,
+      });
+
+      <span class="kw">return</span> {
+        status: &quot;flushed&quot;,
+        reason: &quot;assistant_barrier_open&quot;,
+        lane,
+        generation,
+        flushedFrames: frames.length,
+        result,
+      };
+    } <span class="kw">finally</span> {
+      flushInProgress = <span class="kw">false</span>;
+    }
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">pumpUplinkQueue</span>(): Promise&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">if</span> (closed) <span class="kw">return</span>;
+    <span class="kw">if</span> (inflight &gt;= config.maxConcurrentUplinks) <span class="kw">return</span>;
+    <span class="kw">if</span> (uplinkQueue.length === 0) <span class="kw">return</span>;
+
+    <span class="kw">const</span> next = uplinkQueue.<span class="fn">shift</span>();
+    <span class="kw">if</span> (!next) <span class="kw">return</span>;
+
+    inflight++;
+
+    <span class="kw">try</span> {
+      <span class="kw">await</span> <span class="fn">performUplink</span>(next.frame, next.lane);
+    } <span class="kw">finally</span> {
+      inflight--;
+      <span class="kw">void</span> <span class="fn">pumpUplinkQueue</span>();
+    }
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">maybeFlushHeldAudio</span>(referenceFrame?: Frame): Promise&lt;UplinkResult&gt; {
+    <span class="kw">if</span> (flushInProgress) {
+      <span class="kw">return</span> {
+        status: &quot;noop&quot;,
+        reason: &quot;flush_in_progress&quot;,
+        lane: <span class="kw">null</span>,
+      };
+    }
+
+    <span class="kw">if</span> (barrier.<span class="fn">isClosed</span>()) {
+      <span class="kw">return</span> {
+        status: &quot;noop&quot;,
+        reason: &quot;barrier_closed&quot;,
+        lane: <span class="kw">null</span>,
+      };
+    }
+
+    barrier.<span class="fn">clearCompletedResponseIfDrained</span>();
+
+    <span class="kw">const</span> { frames, generation } = heldAudio.<span class="fn">drain</span>();
+    <span class="kw">if</span> (frames.length === 0) {
+      <span class="kw">return</span> {
+        status: &quot;noop&quot;,
+        reason: &quot;nothing_held&quot;,
+        lane: <span class="kw">null</span>,
+      };
+    }
+
+    <span class="kw">const</span> lane = <span class="fn">resolveLaneSafe</span>({
+      frame: referenceFrame ?? frames[0],
+      isSpeech: <span class="kw">true</span>,
+      speaking: <span class="kw">true</span>,
+      assistantBlocked: <span class="kw">false</span>,
+      replayedFromHoldBuffer: <span class="kw">true</span>,
+    });
+
+    <span class="kw">if</span> (!lane) {
+      <span class="kw">return</span> {
+        status: &quot;rejected&quot;,
+        reason: &quot;lane_resolution_failed&quot;,
+        lane: <span class="kw">null</span>,
+      };
+    }
+
+    <span class="kw">return</span> <span class="fn">performBufferedFlush</span>(frames, lane, generation);
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">processFrame</span>(frame: Frame): Promise&lt;UplinkResult&gt; {
+    metrics.framesTotal++;
+
+    <span class="kw">if</span> (closed) {
+      metrics.framesDroppedGateClosed++;
+      <span class="kw">return</span> {
+        status: &quot;rejected&quot;,
+        reason: &quot;gate_closed&quot;,
+        lane: <span class="kw">null</span>,
+        queueDepth: uplinkQueue.length,
+        inflight,
+      };
+    }
+
+    <span class="kw">try</span> {
+      <span class="fn">validateFrame</span>(frame);
+    } <span class="kw">catch</span> (error) {
+      metrics.framesDroppedInvalid++;
+      <span class="fn">emitError</span>(
+        deps.onEvent,
+        config.streamLabel,
+        error <span class="kw">instanceof</span> SpeechGateError ? error.code : &quot;INVALID_FRAME&quot;,
+        error <span class="kw">instanceof</span> Error ? error.message : &quot;Invalid frame&quot;,
+        { error }
+      );
+
+      <span class="kw">return</span> {
+        status: &quot;rejected&quot;,
+        reason: &quot;invalid_frame&quot;,
+        lane: <span class="kw">null</span>,
+        queueDepth: uplinkQueue.length,
+        inflight,
+        error: error <span class="kw">instanceof</span> Error ? error : <span class="kw">new</span> <span class="fn">Error</span>(<span class="fn">String</span>(error)),
+      };
+    }
+
+    <span class="kw">const</span> atMs = frame.timestampMs ?? <span class="fn">nowMs</span>();
+    <span class="kw">const</span> { isSpeech, bandEnergy, ratio } = <span class="fn">classifySpeech</span>(frame);
+
+    <span class="kw">if</span> (isSpeech) {
+      metrics.framesSpeechDetected++;
+      lastSpeechAtMs = atMs;
+      <span class="fn">transitionTurnState</span>(&quot;speaking&quot;, &quot;speech_detected&quot;, frame);
+    } <span class="kw">else</span> {
+      metrics.framesSilenceDetected++;
+    }
+
+    <span class="kw">const</span> hangoverActive = atMs - lastSpeechAtMs &lt;= config.hangoverMs;
+
+    <span class="kw">if</span> (!isSpeech &amp;&amp; !hangoverActive) {
+      metrics.framesDroppedSilence++;
+      <span class="fn">transitionTurnState</span>(&quot;idle&quot;, &quot;silence_after_hangover&quot;, frame);
+
+      <span class="kw">return</span> {
+        status: &quot;dropped&quot;,
+        reason: &quot;silence&quot;,
+        lane: <span class="kw">null</span>,
+        queueDepth: uplinkQueue.length,
+        inflight,
+        diagnostics: {
+          bandEnergy,
+          ratio,
+          hangoverActive: <span class="kw">false</span>,
+          barrier: barrier.<span class="fn">snapshot</span>(),
+        },
+      };
+    }
+
+    <span class="kw">const</span> lane = <span class="fn">resolveLaneSafe</span>({
+      frame,
+      isSpeech,
+      speaking: isSpeech || hangoverActive,
+      assistantBlocked: barrier.<span class="fn">isClosed</span>(),
+      replayedFromHoldBuffer: <span class="kw">false</span>,
+    });
+
+    <span class="kw">if</span> (!lane) {
+      <span class="kw">return</span> {
+        status: &quot;rejected&quot;,
+        reason: &quot;lane_resolution_failed&quot;,
+        lane: <span class="kw">null</span>,
+        queueDepth: uplinkQueue.length,
+        inflight,
+      };
+    }
+
+    <span class="kw">if</span> (barrier.<span class="fn">isClosed</span>()) {
+      metrics.barrierBlockedFrames++;
+      <span class="fn">transitionTurnState</span>(&quot;assistant_blocked&quot;, &quot;assistant_playback_barrier&quot;, frame);
+
+      <span class="kw">if</span> (!config.bufferDuringAssistantPlayback) {
+        <span class="kw">return</span> {
+          status: &quot;buffered&quot;,
+          reason: &quot;assistant_playback_barrier&quot;,
+          lane,
+          queueDepth: uplinkQueue.length,
+          inflight,
+          held: heldAudio.<span class="fn">snapshot</span>(),
+          diagnostics: {
+            bandEnergy,
+            ratio,
+            hangoverActive,
+            barrier: barrier.<span class="fn">snapshot</span>(),
+          },
+        };
+      }
+
+      <span class="kw">const</span> accepted = heldAudio.<span class="fn">push</span>(frame);
+
+      <span class="kw">if</span> (accepted) {
+        metrics.heldFramesAccepted++;
+        <span class="kw">return</span> {
+          status: &quot;buffered&quot;,
+          reason: &quot;assistant_playback_barrier&quot;,
+          lane,
+          queueDepth: uplinkQueue.length,
+          inflight,
+          held: heldAudio.<span class="fn">snapshot</span>(),
+          diagnostics: {
+            bandEnergy,
+            ratio,
+            hangoverActive,
+            barrier: barrier.<span class="fn">snapshot</span>(),
+          },
+        };
+      }
+
+      metrics.heldFramesDropped++;
+      <span class="kw">return</span> {
+        status: &quot;dropped&quot;,
+        reason: &quot;held_buffer_overflow&quot;,
+        lane,
+        queueDepth: uplinkQueue.length,
+        inflight,
+        held: heldAudio.<span class="fn">snapshot</span>(),
+        diagnostics: {
+          bandEnergy,
+          ratio,
+          hangoverActive,
+          barrier: barrier.<span class="fn">snapshot</span>(),
+        },
+      };
+    }
+
+    <span class="kw">if</span> (heldAudio.<span class="fn">snapshot</span>().frameCount &gt; 0) {
+      <span class="kw">await</span> <span class="fn">maybeFlushHeldAudio</span>(frame);
+    }
+
+    <span class="fn">transitionTurnState</span>(
+      !isSpeech &amp;&amp; hangoverActive ? &quot;hangover&quot; : &quot;speaking&quot;,
+      !isSpeech &amp;&amp; hangoverActive ? &quot;hangover_active&quot; : &quot;speech_admitted&quot;,
+      frame
+    );
+
+    <span class="kw">if</span> (inflight &lt; config.maxConcurrentUplinks &amp;&amp; uplinkQueue.length === 0) {
+      metrics.framesAdmittedImmediate++;
+      <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">performUplink</span>(frame, lane);
+
+      <span class="kw">return</span> {
+        ...result,
+        queueDepth: uplinkQueue.length,
+        inflight,
+        diagnostics: {
+          bandEnergy,
+          ratio,
+          hangoverActive,
+          barrier: barrier.<span class="fn">snapshot</span>(),
+        },
+      };
+    }
+
+    <span class="kw">if</span> (uplinkQueue.length &gt;= config.maxQueueDepth) {
+      <span class="kw">if</span> (config.overflowPolicy === &quot;drop_oldest&quot; &amp;&amp; uplinkQueue.length &gt; 0) {
+        uplinkQueue.<span class="fn">shift</span>();
+      } <span class="kw">else</span> {
+        metrics.framesDroppedQueueBackpressure++;
+        <span class="kw">return</span> {
+          status: &quot;dropped&quot;,
+          reason: &quot;queue_backpressure&quot;,
+          lane,
+          queueDepth: uplinkQueue.length,
+          inflight,
+          diagnostics: {
+            bandEnergy,
+            ratio,
+            hangoverActive,
+            barrier: barrier.<span class="fn">snapshot</span>(),
+          },
+        };
+      }
+    }
+
+    uplinkQueue.<span class="fn">push</span>({
+      frame,
+      lane,
+      queuedAtMs: <span class="fn">nowMs</span>(),
+    });
+
+    metrics.framesQueued++;
+    <span class="kw">void</span> <span class="fn">pumpUplinkQueue</span>();
+
+    <span class="kw">return</span> {
+      status: &quot;queued&quot;,
+      reason: isSpeech ? &quot;speech&quot; : &quot;hangover&quot;,
+      lane,
+      queueDepth: uplinkQueue.length,
+      inflight,
+      diagnostics: {
+        bandEnergy,
+        ratio,
+        hangoverActive,
+        barrier: barrier.<span class="fn">snapshot</span>(),
+      },
+    };
+  }
+
+  <span class="kw">function</span> <span class="fn">onRealtimeEvent</span>(serverEvent: RealtimeServerEvent): <span class="kw">void</span> {
+    barrier.<span class="fn">onRealtimeEvent</span>(serverEvent);
+
+    <span class="kw">if</span> (!barrier.<span class="fn">isClosed</span>()) {
+      <span class="kw">void</span> <span class="fn">maybeFlushHeldAudio</span>();
+    }
+  }
+
+  <span class="kw">function</span> <span class="fn">markAssistantPlaybackActivity</span>(): <span class="kw">void</span> {
+    barrier.<span class="fn">markAssistantPlaybackActivity</span>(<span class="fn">nowMs</span>());
+  }
+
+  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">flush</span>(): Promise&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">while</span> (!closed) {
+      <span class="kw">const</span> heldCount = heldAudio.<span class="fn">snapshot</span>().frameCount;
+
+      <span class="kw">if</span> (
+        heldCount === 0 &amp;&amp;
+        uplinkQueue.length === 0 &amp;&amp;
+        inflight === 0 &amp;&amp;
+        !flushInProgress
+      ) {
+        <span class="kw">break</span>;
+      }
+
+      <span class="kw">if</span> (!barrier.<span class="fn">isClosed</span>()) {
+        <span class="kw">await</span> <span class="fn">maybeFlushHeldAudio</span>();
+      }
+
+      <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>((resolve) =&gt; <span class="fn">setTimeout</span>(resolve, 10));
+    }
+  }
+
+  <span class="kw">function</span> <span class="fn">resetMetrics</span>(): <span class="kw">void</span> {
+    <span class="kw">for</span> (<span class="kw">const</span> key <span class="kw">of</span> Object.<span class="fn">keys</span>(metrics) <span class="kw">as</span> Array&lt;keyof SpeechGateMetrics&gt;) {
+      metrics[key] = 0;
+    }
+  }
+
+  <span class="kw">function</span> <span class="fn">getSnapshot</span>(): GateSnapshot {
+    <span class="kw">const</span> avgUplinkLatencyMs =
+      metrics.uplinksSucceeded &gt; 0
+        ? metrics.totalUplinkLatencyMs / metrics.uplinksSucceeded
+        : 0;
+
+    <span class="kw">return</span> {
+      closed,
+      turnState,
+      noiseFloor,
+      queueDepth: uplinkQueue.length,
+      inflight,
+      flushInProgress,
+      held: heldAudio.<span class="fn">snapshot</span>(),
+      barrier: barrier.<span class="fn">snapshot</span>(),
+      avgUplinkLatencyMs,
+      metrics: { ...metrics },
+      config: { ...config },
+    };
+  }
+
+  <span class="kw">function</span> <span class="fn">close</span>(): <span class="kw">void</span> {
+    closed = <span class="kw">true</span>;
+    uplinkQueue.length = 0;
+    heldAudio.<span class="fn">clear</span>();
+    <span class="fn">transitionTurnState</span>(&quot;idle&quot;, &quot;gate_closed&quot;);
+  }
+
+  <span class="kw">function</span> <span class="fn">isClosed</span>(): <span class="kw">boolean</span> {
+    <span class="kw">return</span> closed;
+  }
+
+  <span class="kw">return</span> {
+    processFrame,
+    onRealtimeEvent,
+    markAssistantPlaybackActivity,
+    maybeFlushHeldAudio,
+    getSnapshot,
+    resetMetrics,
+    flush,
+    close,
+    isClosed,
+  };
 }</pre>
           </div>
         </div>
-      </div>
     </section>
 
     <!-- RESUME -->
