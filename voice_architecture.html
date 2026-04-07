@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice AI System Architecture v4</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080c10;
+      --bg2: #0d1117;
+      --bg3: #111820;
+      --panel: #0f1620;
+      --border: rgba(255,255,255,0.07);
+      --border-bright: rgba(255,255,255,0.16);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --dim: #475569;
+
+      --red: #ff5a67;
+      --orange: #ff8a4c;
+      --yellow: #ffd84d;
+      --green: #2ed573;
+      --cyan: #1e90ff;
+      --blue: #5b5df0;
+      --purple: #b06cff;
+      --teal: #00d2d3;
+      --pink: #f472b6;
+
+      --red-glow: rgba(255,90,103,0.16);
+      --orange-glow: rgba(255,138,76,0.14);
+      --yellow-glow: rgba(255,216,77,0.12);
+      --green-glow: rgba(46,213,115,0.14);
+      --cyan-glow: rgba(30,144,255,0.14);
+      --blue-glow: rgba(91,93,240,0.14);
+      --purple-glow: rgba(176,108,255,0.14);
+      --teal-glow: rgba(0,210,211,0.14);
+      --pink-glow: rgba(244,114,182,0.14);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      min-height: 100%;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30,144,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,144,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 36px 24px 84px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .header-label {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      opacity: 0.85;
+      margin-bottom: 12px;
+    }
+
+    .header h1 {
+      font-family: "Syne", sans-serif;
+      font-size: clamp(28px, 4vw, 50px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      background: linear-gradient(135deg, #f8fafc 0%, #a5b4c6 52%, #1e90ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-sub {
+      max-width: 980px;
+      margin: 12px auto 0;
+      font-size: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+      letter-spacing: 0.03em;
+    }
+
+    .summary-note {
+      max-width: 1050px;
+      margin: 18px auto 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.025);
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .score-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .score-pill {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--pill-color, var(--cyan));
+      color: var(--pill-color, var(--cyan));
+      background: rgba(0,0,0,0.28);
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .legend-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .legend-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .legend-body {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .layer {
+      margin-bottom: 12px;
+      animation: fadeUp 0.42s ease both;
+    }
+
+    .layer:nth-child(odd) { animation-delay: 0.04s; }
+    .layer:nth-child(even) { animation-delay: 0.08s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .layer-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding-left: 4px;
+    }
+
+    .layer-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    .badge.p0 {
+      color: var(--red);
+      border-color: rgba(255,90,103,0.45);
+      background: rgba(255,90,103,0.12);
+    }
+
+    .badge.p1 {
+      color: var(--yellow);
+      border-color: rgba(255,216,77,0.45);
+      background: rgba(255,216,77,0.10);
+    }
+
+    .badge.new {
+      color: var(--orange);
+      border-color: rgba(255,138,76,0.45);
+      background: rgba(255,138,76,0.10);
+    }
+
+    .flow-arrow {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--dim);
+      font-size: 24px;
+      padding: 2px 0;
+    }
+
+    .cards {
+      display: grid;
+      gap: 8px;
+    }
+
+    .cards-1 { grid-template-columns: 1fr; }
+    .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cards-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .split-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    .section-box {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      background: rgba(255,255,255,0.015);
+    }
+
+    .section-box-label {
+      position: absolute;
+      top: -9px;
+      left: 12px;
+      padding: 0 8px;
+      background: var(--bg);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .section-copy {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+
+    button.card {
+      width: 100%;
+      text-align: left;
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg2);
+      color: var(--text);
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      font: inherit;
+    }
+
+    button.card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      border-radius: 8px;
+      background: var(--card-glow, var(--cyan-glow));
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    button.card:hover,
+    button.card:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--card-color, var(--cyan));
+      box-shadow: 0 0 20px var(--card-glow, var(--cyan-glow)), 0 6px 16px rgba(0,0,0,0.35);
+      outline: none;
+    }
+
+    button.card:hover::before,
+    button.card:focus-visible::before {
+      opacity: 1;
+    }
+
+    button.card.active {
+      border-color: var(--card-color, var(--cyan));
+    }
+
+    button.card.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: var(--card-color, var(--cyan));
+      box-shadow: 0 0 12px var(--card-color, var(--cyan));
+    }
+
+    button.card[data-color="red"]    { --card-color: var(--red);    --card-glow: var(--red-glow); }
+    button.card[data-color="orange"] { --card-color: var(--orange); --card-glow: var(--orange-glow); }
+    button.card[data-color="yellow"] { --card-color: var(--yellow); --card-glow: var(--yellow-glow); }
+    button.card[data-color="green"]  { --card-color: var(--green);  --card-glow: var(--green-glow); }
+    button.card[data-color="cyan"]   { --card-color: var(--cyan);   --card-glow: var(--cyan-glow); }
+    button.card[data-color="blue"]   { --card-color: var(--blue);   --card-glow: var(--blue-glow); }
+    button.card[data-color="purple"] { --card-color: var(--purple); --card-glow: var(--purple-glow); }
+    button.card[data-color="teal"]   { --card-color: var(--teal);   --card-glow: var(--teal-glow); }
+    button.card[data-color="pink"]   { --card-color: var(--pink);   --card-glow: var(--pink-glow); }
+
+    .card-icon {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-family: "Syne", sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .card-sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .card-tag {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--card-color, var(--cyan));
+      color: var(--card-color, var(--cyan));
+      background: var(--card-glow, var(--cyan-glow));
+      opacity: 0.95;
+    }
+
+    .latency-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      background: rgba(46,213,115,0.08);
+      border: 1px solid rgba(46,213,115,0.22);
+      border-radius: 4px;
+      padding: 2px 5px;
+    }
+
+    .rail-note {
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    #detail-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 360px;
+      background: var(--panel);
+      border-left: 1px solid var(--border-bright);
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      z-index: 100;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    #detail-panel.open {
+      transform: translateX(0);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .close-btn:hover,
+    .close-btn:focus-visible {
+      border-color: var(--border-bright);
+      color: var(--text);
+      outline: none;
+    }
+
+    #detail-panel h2 {
+      margin-top: 8px;
+      margin-bottom: 4px;
+      font-family: "Syne", sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .detail-type {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .detail-plain {
+      font-size: 14px;
+      color: #cbd5e1;
+      line-height: 1.72;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border-left: 2px solid var(--detail-color, var(--cyan));
+      border-radius: 0 4px 4px 0;
+    }
+
+    .detail-section {
+      margin-bottom: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .detail-section h3 {
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .detail-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      line-height: 1.58;
+      color: var(--text);
+    }
+
+    .detail-item::before {
+      content: "→";
+      color: var(--detail-color, var(--cyan));
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .detail-latency {
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      font-size: 14px;
+      color: var(--green);
+    }
+
+    .detail-latency span {
+      display: block;
+      font-family: "Syne", sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .code-block {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg3);
+      color: var(--cyan);
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .gap-badge {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid;
+    }
+
+    .gap-badge.p0 {
+      color: var(--red);
+      border-color: rgba(255,90,103,0.45);
+      background: rgba(255,90,103,0.12);
+    }
+
+    .gap-badge.p1 {
+      color: var(--yellow);
+      border-color: rgba(255,216,77,0.45);
+      background: rgba(255,216,77,0.10);
+    }
+
+    .status-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 34px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      z-index: 50;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.cyan  { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+    .status-dot.red   { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.82); }
+    }
+
+    @media (max-width: 1200px) {
+      .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cards-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .split-3 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .cards-4, .cards-5, .cards-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1fr; }
+      #detail-panel { width: 100%; }
+      .status-bar { overflow-x: auto; }
+    }
+
+    @media (max-width: 600px) {
+      .legend,
+      .cards-2, .cards-3, .cards-4, .cards-5 {
+        grid-template-columns: 1fr;
+      }
+      .wrapper { padding-left: 16px; padding-right: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="header-label">System Architecture</div>
+      <h1>Voice AI Orchestration System</h1>
+      <div class="header-sub">
+        A practical, low-latency architecture for real-time voice AI. Separating the
+        live call path from the control plane and the post-call systems. Providing security, scaleability and observability.
+      </div>
+      <div class="summary-note">
+        <strong>Reading guide:</strong> Layers 01–05 are on the <strong>live call path</strong>.
+        Layer 06 is the <strong>control plane</strong> that configures how the live path behaves.
+        Layers 07–08 are mostly <strong>async, safety and operational systems</strong> that support the
+        runtime without slowing down the caller experience.
+      </div>
+      <div class="score-bar">
+        <div class="score-pill" style="--pill-color:var(--red)">Security 9/10</div>
+        <div class="score-pill" style="--pill-color:var(--cyan)">Latency 8.5/10</div>
+        <div class="score-pill" style="--pill-color:var(--yellow)">Observability 9/10</div>
+        <div class="score-pill" style="--pill-color:var(--purple)">Scalability 8/10</div>
+        <div class="score-pill" style="--pill-color:var(--green)">Runtime Maturity 8.5/10</div>
+        <div class="score-pill" style="--pill-color:var(--orange)">Cost Control 8/10</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-card">
+        <div class="legend-title">Live path</div>
+        <div class="legend-body">Everything the caller feels directly: audio ingest, speech detection, routing, model response and playback.</div>
+      </div>
+      <div class="legend-card">
+        <div class="legend-title">Control plane</div>
+        <div class="legend-body">Configuration that shapes runtime behavior: prompts, policies, tenant settings, budgets and rollout control.</div>
+      </div>
+      <div class="legend-card">
+        <div class="legend-title">Async systems</div>
+        <div class="legend-body">Evaluation, audits, analytics and synthetic checks that happen beside or after the call instead of on the critical path.</div>
+      </div>
+      <div class="legend-card">
+        <div class="legend-title">Key principle</div>
+        <div class="legend-body">The caller should never wait for things that do not need to be synchronous. Silence is failure in voice systems.</div>
+      </div>
+    </div>
+
+    <div class="layer-title">CLICK ON CARDS TO VIEW DETAILSeo</div>
+
+    <div class="layer">
+      <div class="layer-title">01 · Realtime Audio Ingress & Turn Control</div>
+      <div class="section-box" style="border-color:rgba(30,144,255,0.22);">
+        <div class="section-box-label" style="color:var(--cyan)">LIVE PATH · AUDIO IN → TURN DETECTION</div>
+        <div class="section-copy">
+          This layer is responsible for bringing live audio into the system, keeping it stable,
+          and deciding when the user has started or finished a turn. In voice systems, this is where
+          a lot of the “feels magical” experience is won or lost.
+        </div>
+        <div class="cards cards-4">
+          <button class="card" data-color="cyan" data-node="telephony" aria-label="Open details for telephony gateway">
+            <span class="latency-badge">&lt;50ms</span>
+            <span class="card-icon">📞</span>
+            <div class="card-title">Telephony / WebRTC Gateway</div>
+            <div class="card-sub">Accepts PSTN, SIP or browser audio. Handles transport encryption, jitter smoothing and live stream setup.</div>
+            <span class="card-tag">Ingress</span>
+          </button>
+
+          <button class="card" data-color="cyan" data-node="speech_gate" aria-label="Open details for speech gate">
+            <span class="latency-badge">&lt;25ms</span>
+            <span class="card-icon">🎚️</span>
+            <div class="card-title">Speech Gate</div>
+            <div class="card-sub">Voice activity detection, barge-in handling, assistant playback suppression and turn-finalization logic.</div>
+            <span class="card-tag">Turn Control</span>
+          </button>
+
+          <button class="card" data-color="cyan" data-node="stt" aria-label="Open details for speech to text">
+            <span class="latency-badge">&lt;200ms</span>
+            <span class="card-icon">🎙️</span>
+            <div class="card-title">Streaming STT</div>
+            <div class="card-sub">Produces partial transcripts while the speaker is still talking, so downstream systems can start early.</div>
+            <span class="card-tag">Partial Transcript</span>
+          </button>
+
+          <button class="card" data-color="cyan" data-node="session" aria-label="Open details for session state">
+            <span class="card-icon">🧠</span>
+            <div class="card-title">Session State</div>
+            <div class="card-sub">Tracks active conversation state, entities, tool history and turn summaries for the duration of the session.</div>
+            <span class="card-tag">Ephemeral Memory</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">02 · Security & Policy Boundary <span class="badge p0">P0</span></div>
+      <div class="section-box" style="border-color:rgba(255,90,103,0.24); background:rgba(255,90,103,0.025);">
+        <div class="section-box-label" style="color:var(--red)">EVERY TURN PASSES HERE BEFORE MODEL EXECUTION</div>
+        <div class="section-copy">
+          This boundary exists to stop unsafe, abusive or policy-breaking content before it reaches the model or is written to logs.
+          It is much cheaper to block bad input here than to let it leak deeper into the system.
+        </div>
+        <div class="cards cards-4" style="margin-bottom:8px;">
+          <button class="card" data-color="red" data-node="injection">
+            <span class="latency-badge">&lt;5ms</span>
+            <span class="card-icon">🛡️</span>
+            <div class="card-title">Prompt Injection Filter</div>
+            <div class="card-sub">Fast deterministic screening for known jailbreak and instruction-overwrite patterns.</div>
+            <span class="card-tag">Pre-Model</span>
+          </button>
+
+          <button class="card" data-color="red" data-node="semantic_guard">
+            <span class="latency-badge">&lt;40ms</span>
+            <span class="card-icon">🔐</span>
+            <div class="card-title">Semantic Guard</div>
+            <div class="card-sub">Catches attack intent that simple phrase matching misses by comparing meaning, not exact wording.</div>
+            <span class="card-tag">Meaning Match</span>
+          </button>
+
+          <button class="card" data-color="red" data-node="pii">
+            <span class="latency-badge">&lt;8ms</span>
+            <span class="card-icon">👁️</span>
+            <div class="card-title">PII Protection</div>
+            <div class="card-sub">Redacts or tokenizes sensitive personal data before logs, analytics or long-lived storage receive it.</div>
+            <span class="card-tag">Data Minimization</span>
+          </button>
+
+          <button class="card" data-color="red" data-node="rate_limit">
+            <span class="card-icon">🚦</span>
+            <div class="card-title">Abuse & Rate Control</div>
+            <div class="card-sub">Prevents flooding, bot-like turns and abuse patterns that would drive cost or degrade service for others.</div>
+            <span class="card-tag">Fair Use</span>
+          </button>
+        </div>
+        <div class="cards cards-2">
+          <button class="card" data-color="red" data-node="service_auth">
+            <span class="card-icon">🔑</span>
+            <div class="card-title">Service Identity</div>
+            <div class="card-sub">Internal services authenticate to each other with mTLS and short-lived credentials. No implicit trust.</div>
+            <span class="card-tag">Zero Trust</span>
+          </button>
+
+          <button class="card" data-color="red" data-node="policy_engine">
+            <span class="card-icon">⚖️</span>
+            <div class="card-title">Policy Engine</div>
+            <div class="card-sub">Applies per-tenant, per-region and per-domain rules before the request proceeds. Keeps behavior controlled and auditable.</div>
+            <span class="card-tag">Runtime Policy</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">03 · Realtime Understanding & Routing</div>
+      <div class="split">
+        <div class="section-box" style="border-color:rgba(255,216,77,0.22);">
+          <div class="section-box-label" style="color:var(--yellow)">FAST PATH · CHEAP AND DETERMINISTIC</div>
+          <div class="rail-note">
+            The goal of the fast path is simple: do not wake up expensive reasoning if a lightweight rule or small model can make the decision safely.
+          </div>
+          <div class="cards cards-2">
+            <button class="card" data-color="yellow" data-node="regex_class">
+              <span class="latency-badge">&lt;15ms</span>
+              <span class="card-icon">⚡</span>
+              <div class="card-title">Fast Intent Match</div>
+              <div class="card-sub">Deterministic patterns for common turns such as greetings, confirmations and known FAQs.</div>
+              <span class="card-tag">Deterministic</span>
+            </button>
+
+            <button class="card" data-color="yellow" data-node="sentiment">
+              <span class="latency-badge">&lt;20ms</span>
+              <span class="card-icon">😤</span>
+              <div class="card-title">Sentiment & Distress Signals</div>
+              <div class="card-sub">Tracks frustration, confusion, distress and escalation risk across turns rather than one message in isolation.</div>
+              <span class="card-tag">Realtime Signal</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-box" style="border-color:rgba(176,108,255,0.22);">
+          <div class="section-box-label" style="color:var(--purple)">DEEP PATH · WHEN UNDERSTANDING MATTERS</div>
+          <div class="rail-note">
+            When the turn is ambiguous or multi-step, the system uses a stronger model to classify intent and choose the safest route.
+          </div>
+          <div class="cards cards-2">
+            <button class="card" data-color="purple" data-node="intent_model">
+              <span class="latency-badge">&lt;120ms</span>
+              <span class="card-icon">🧭</span>
+              <div class="card-title">Intent Model</div>
+              <div class="card-sub">Produces intent, confidence and a recommended action path for downstream orchestration.</div>
+              <span class="card-tag">Structured Output</span>
+            </button>
+
+            <button class="card" data-color="purple" data-node="complexity">
+              <span class="card-icon">🌀</span>
+              <div class="card-title">Complexity Router</div>
+              <div class="card-sub">Decides whether this turn goes to a fast answer path, full tool-using orchestration or human escalation.</div>
+              <span class="card-tag">Decision Point</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">04 · Domain Context & Tool-Oriented Orchestration</div>
+      <div class="section-box" style="border-color:rgba(244,114,182,0.22); background:rgba(244,114,182,0.02);">
+        <div class="section-box-label" style="color:var(--pink)">LIVE PATH · CONTEXT ASSEMBLY BEFORE REASONING</div>
+        <div class="section-copy">
+          The model should not have to guess the business context from scratch. This layer identifies domain entities,
+          injects tenant-specific rules and prepares the request so the orchestrator sees the right facts at the right time.
+        </div>
+        <div class="cards cards-4">
+          <button class="card" data-color="pink" data-node="domain_adapter">
+            <span class="card-icon">🗺️</span>
+            <div class="card-title">Domain Adapter</div>
+            <div class="card-sub">Builds the turn context from tenant settings, domain rules and current conversation state.</div>
+            <span class="card-tag">Context Assembly</span>
+          </button>
+
+          <button class="card" data-color="pink" data-node="entity_enricher">
+            <span class="card-icon">🏷️</span>
+            <div class="card-title">Entity Enricher</div>
+            <div class="card-sub">Links names, IDs, bookings, products or landmarks to real records before retrieval or tool use.</div>
+            <span class="card-tag">Entity Linking</span>
+          </button>
+
+          <button class="card" data-color="pink" data-node="persona_config">
+            <span class="card-icon">🎭</span>
+            <div class="card-title">Persona & Language Config</div>
+            <div class="card-sub">Controls tone, voice behavior, response language and tenant-specific conversation style.</div>
+            <span class="card-tag">Per Tenant</span>
+          </button>
+
+          <button class="card" data-color="pink" data-node="tool_plan">
+            <span class="card-icon">🧰</span>
+            <div class="card-title">Tool Plan Builder</div>
+            <div class="card-sub">Chooses the minimum tool path needed for the turn so the system stays fast and controlled.</div>
+            <span class="card-tag">Plan First</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">05 · Response Execution <span class="badge p0">P0</span></div>
+      <div class="section-box" style="border-color:rgba(91,93,240,0.24);">
+        <div class="section-box-label" style="color:var(--blue)">LIVE PATH · MODEL, TOOLS, TTS, INTERRUPTION HANDLING</div>
+        <div class="section-copy">
+          This is the heart of the runtime. It chooses the right model path, runs tools if required and streams a response back quickly.
+          In a voice system, interruption handling matters almost as much as answer quality.
+        </div>
+        <div class="cards cards-5">
+          <button class="card" data-color="blue" data-node="fast_llm">
+            <span class="latency-badge">&lt;400ms</span>
+            <span class="card-icon">⚡</span>
+            <div class="card-title">Fast LLM</div>
+            <div class="card-sub">Handles short, straightforward turns with low latency and tight token limits.</div>
+            <span class="card-tag">Simple Path</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="primary_llm">
+            <span class="latency-badge">&lt;1.5s</span>
+            <span class="card-icon">🧩</span>
+            <div class="card-title">Primary LLM</div>
+            <div class="card-sub">Handles multi-step reasoning, tool use and context-heavy turns where correctness matters more.</div>
+            <span class="card-tag">Complex Path</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="tool_runtime">
+            <span class="card-icon">🔧</span>
+            <div class="card-title">Tool Runtime</div>
+            <div class="card-sub">Executes approved tools with guardrails, retries and structured outputs for the model to use safely.</div>
+            <span class="card-tag">Tool Calling</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="tts">
+            <span class="latency-badge">&lt;180ms</span>
+            <span class="card-icon">🔊</span>
+            <div class="card-title">Streaming TTS</div>
+            <div class="card-sub">Begins playback before full completion so the system feels responsive and conversational.</div>
+            <span class="card-tag">Playback</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="cost_gov">
+            <span class="card-icon">💰</span>
+            <div class="card-title">Cost Governor</div>
+            <div class="card-sub">Tracks spend per call and per tenant and prevents model usage from drifting into uncontrolled cost.</div>
+            <span class="card-tag">Budget Guard</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">06 · Control Plane <span class="badge p1">P1</span></div>
+      <div class="section-box" style="border-color:rgba(0,210,211,0.2); background:rgba(0,210,211,0.02);">
+        <div class="section-box-label" style="color:var(--teal)">NOT ON THE CRITICAL PATH · SHAPES RUNTIME BEHAVIOR</div>
+        <div class="section-copy">
+          These systems do not answer the caller directly, but they control how the live runtime behaves. This separation makes the
+          architecture easier to operate and safer to change.
+        </div>
+        <div class="cards cards-4">
+          <button class="card" data-color="teal" data-node="prompt_mgr">
+            <span class="card-icon">📋</span>
+            <div class="card-title">Prompt Manager</div>
+            <div class="card-sub">Versions prompts, supports rollback and injects required safety and domain rules consistently.</div>
+            <span class="card-tag">Config</span>
+          </button>
+
+          <button class="card" data-color="teal" data-node="tenant_config">
+            <span class="card-icon">🏢</span>
+            <div class="card-title">Tenant Config</div>
+            <div class="card-sub">Stores language rules, personas, tool access, model preferences and domain-specific constraints.</div>
+            <span class="card-tag">Per Customer</span>
+          </button>
+
+          <button class="card" data-color="teal" data-node="feature_flags">
+            <span class="card-icon">🚩</span>
+            <div class="card-title">Feature Flags & Rollouts</div>
+            <div class="card-sub">Safely rolls out new behaviors to a subset of traffic before broad release.</div>
+            <span class="card-tag">Release Control</span>
+          </button>
+
+          <button class="card" data-color="teal" data-node="model_registry">
+            <span class="card-icon">📚</span>
+            <div class="card-title">Model Registry</div>
+            <div class="card-sub">Tracks approved models, version history, pricing and routing rules used by orchestration.</div>
+            <span class="card-tag">Governance</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">07 · Knowledge, Actions & Human Safety Nets</div>
+      <div class="split-3">
+        <div class="section-box" style="border-color:rgba(0,210,211,0.22);">
+          <div class="section-box-label" style="color:var(--teal)">KNOWLEDGE RETRIEVAL</div>
+          <div class="rail-note">
+            Retrieval should be fast, selective and bounded. The goal is to improve correctness, not dump documents into context.
+          </div>
+          <div class="cards cards-1">
+            <button class="card" data-color="teal" data-node="rag_agent" style="margin-bottom:8px;">
+              <span class="card-icon">📚</span>
+              <div class="card-title">RAG Orchestrator</div>
+              <div class="card-sub">Rewrites the query, retrieves from multiple stores, reranks and assembles only the most useful context.</div>
+              <span class="card-tag">Hybrid RAG</span>
+            </button>
+
+            <button class="card" data-color="teal" data-node="pinecone" style="margin-bottom:8px;">
+              <span class="card-icon">🌲</span>
+              <div class="card-title">Vector Search</div>
+              <div class="card-sub">Finds relevant content by meaning, not exact words, for quick semantic retrieval.</div>
+              <span class="card-tag">Dense Search</span>
+            </button>
+
+            <button class="card" data-color="teal" data-node="neo4j">
+              <span class="card-icon">🕸️</span>
+              <div class="card-title">Graph Retrieval</div>
+              <div class="card-sub">Captures structured relationships between facts, policies, entities and updates over time.</div>
+              <span class="card-tag">Relational Context</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-box" style="border-color:rgba(46,213,115,0.22);">
+          <div class="section-box-label" style="color:var(--green)">SYSTEM ACTIONS</div>
+          <div class="rail-note">
+            Tools are where the system stops being a chatbot and starts becoming operational infrastructure. That power needs strong limits.
+          </div>
+          <div class="cards cards-1">
+            <button class="card" data-color="green" data-node="crm_agent" style="margin-bottom:8px;">
+              <span class="card-icon">👤</span>
+              <div class="card-title">Business System Adapter</div>
+              <div class="card-sub">Reads and writes approved business systems such as CRM, ticketing or bookings through a controlled interface.</div>
+              <span class="card-tag">Adapter Pattern</span>
+            </button>
+
+            <button class="card" data-color="green" data-node="crm_tools" style="margin-bottom:8px;">
+              <span class="card-icon">🔧</span>
+              <div class="card-title">Tool Registry</div>
+              <div class="card-sub">Defines exactly what actions exist, what inputs they accept and what outputs they return.</div>
+              <span class="card-tag">Structured Tools</span>
+            </button>
+
+            <button class="card" data-color="green" data-node="crm_guard">
+              <span class="card-icon">🔒</span>
+              <div class="card-title">Write Guard</div>
+              <div class="card-sub">Blocks unsafe or unauthorised mutations, supports preview mode and keeps rollback data for recovery.</div>
+              <span class="card-tag">Mutation Safety</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-box" style="border-color:rgba(255,138,76,0.22);">
+          <div class="section-box-label" style="color:var(--orange)">HUMAN SAFETY NET</div>
+          <div class="rail-note">
+            The system should know when not to continue. Good escalation is a sign of maturity, not weakness.
+          </div>
+          <div class="cards cards-1">
+            <button class="card" data-color="orange" data-node="escalation" style="margin-bottom:8px;">
+              <span class="card-icon">🆘</span>
+              <div class="card-title">Escalation Engine</div>
+              <div class="card-sub">Triggers on frustration, ambiguity, repeated failure, regulated flows or explicit human requests.</div>
+              <span class="card-tag">Safety Routing</span>
+            </button>
+
+            <button class="card" data-color="orange" data-node="human_handoff" style="margin-bottom:8px;">
+              <span class="card-icon">🎧</span>
+              <div class="card-title">Warm Human Handoff</div>
+              <div class="card-sub">Transfers the session with summary, context and prior actions so the user does not repeat everything.</div>
+              <span class="card-tag">Continuity</span>
+            </button>
+
+            <button class="card" data-color="orange" data-node="compliance_check">
+              <span class="card-icon">⚖️</span>
+              <div class="card-title">Regulated Flow Handler</div>
+              <div class="card-sub">Tightens scripts, data handling and allowed actions when the conversation enters sensitive territory.</div>
+              <span class="card-tag">Guarded Mode</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-arrow">↓</div>
+
+    <div class="layer">
+      <div class="layer-title">08 · Reliability, Observability & Continuous Verification <span class="badge new">Operational</span></div>
+      <div class="section-box" style="border-color:rgba(255,216,77,0.22);">
+        <div class="section-box-label" style="color:var(--yellow)">MOSTLY ASYNC · REQUIRED TO RUN A SERIOUS SYSTEM</div>
+        <div class="section-copy">
+          These systems keep the platform trustworthy over time. They are what let operators answer hard questions such as
+          “what failed?”, “what changed?”, “how much did it cost?” and “is quality drifting?”
+        </div>
+        <div class="cards cards-5">
+          <button class="card" data-color="yellow" data-node="circuit_breaker">
+            <span class="card-icon">⚡</span>
+            <div class="card-title">Circuit Breakers</div>
+            <div class="card-sub">Trip failing dependencies early and route to backups instead of letting a slow vendor drag down every call.</div>
+            <span class="card-tag">Resilience</span>
+          </button>
+
+          <button class="card" data-color="yellow" data-node="trace">
+            <span class="card-icon">🔍</span>
+            <div class="card-title">Distributed Tracing</div>
+            <div class="card-sub">Follows each turn across services so latency and failure can be located precisely.</div>
+            <span class="card-tag">OTEL</span>
+          </button>
+
+          <button class="card" data-color="yellow" data-node="slo_alerts">
+            <span class="card-icon">🚨</span>
+            <div class="card-title">SLO Monitoring</div>
+            <div class="card-sub">Defines acceptable latency and failure targets and alerts the team when reality drifts outside them.</div>
+            <span class="card-tag">Reliability</span>
+          </button>
+
+          <button class="card" data-color="yellow" data-node="audit_log">
+            <span class="card-icon">📜</span>
+            <div class="card-title">Audit Trail</div>
+            <div class="card-sub">Maintains an immutable operational record of prompts, responses, tool actions and system decisions.</div>
+            <span class="card-tag">Forensics</span>
+          </button>
+
+          <button class="card" data-color="yellow" data-node="eval">
+            <span class="card-icon">🎯</span>
+            <div class="card-title">Eval Pipeline</div>
+            <div class="card-sub">Reviews sampled calls for factual quality, turn-taking quality and policy adherence outside the live path.</div>
+            <span class="card-tag">Continuous QA</span>
+          </button>
+        </div>
+
+        <div class="cards cards-4" style="margin-top:8px;">
+          <button class="card" data-color="purple" data-node="synthetic_monitor">
+            <span class="card-icon">🤖</span>
+            <div class="card-title">Synthetic Calls</div>
+            <div class="card-sub">Hourly end-to-end checks using prerecorded or generated test turns to catch breakage before users do.</div>
+            <span class="card-tag">Runtime Checks</span>
+          </button>
+
+          <button class="card" data-color="purple" data-node="chaos_testing">
+            <span class="card-icon">💥</span>
+            <div class="card-title">Chaos Testing</div>
+            <div class="card-sub">Injects controlled failures so fallbacks are proven, not merely assumed.</div>
+            <span class="card-tag">Failure Practice</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="multiregion">
+            <span class="card-icon">🌍</span>
+            <div class="card-title">Multi-Region Failover</div>
+            <div class="card-sub">Supports geographic resilience and lower blast radius when a region, vendor edge or routing layer degrades.</div>
+            <span class="card-tag">DR</span>
+          </button>
+
+          <button class="card" data-color="blue" data-node="data_residency">
+            <span class="card-icon">🏠</span>
+            <div class="card-title">Data Residency Routing</div>
+            <div class="card-sub">Routes storage and processing according to regional policy requirements and enterprise commitments.</div>
+            <span class="card-tag">Regional Control</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-panel" aria-live="polite" aria-label="Architecture detail panel">
+    <button class="close-btn" onclick="closeDetail()" aria-label="Close detail panel">✕</button>
+    <div id="detail-content"></div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item"><div class="status-dot green"></div> Runtime target: conversational</div>
+    <div class="status-item"><div class="status-dot cyan"></div> End-to-end P95 target: &lt;1.2s</div>
+    <div class="status-item"><div class="status-dot red"></div> Hard boundaries: security, policy, cost</div>
+    <div class="status-item">Layers: 8</div>
+    <div class="status-item">Design focus: voice-first</div>
+    <div class="status-item" style="margin-left:auto; opacity:0.42;">Voice AI Architecture v4</div>
+  </div>
+
+  <script>
+    const details = {
+      telephony: {
+        color: "var(--cyan)",
+        title: "Telephony / WebRTC Gateway",
+        type: "Layer 01 · Live Path",
+        latency: "< 50ms",
+        latency_label: "Connection and stream handoff budget",
+        plain: "This is the front door for every realtime session. It accepts phone-network audio, SIP or browser audio and turns it into a stable stream for the rest of the system.",
+        about: [
+          "Supports PSTN, SIP and WebRTC entry points depending on product design.",
+          "Uses encrypted transport so audio is protected in transit.",
+          "Adds jitter buffering and stream normalization to reduce choppy audio.",
+          "Extracts session metadata such as caller ID, region and transport type.",
+          "Starts the downstream pipeline as early as possible so latency stays low."
+        ]
+      },
+
+      speech_gate: {
+        color: "var(--cyan)",
+        title: "Speech Gate",
+        type: "Layer 01 · Live Path",
+        latency: "< 25ms",
+        latency_label: "Turn-state decisions",
+        plain: "This is the voice-runtime control layer. It decides when a human has started speaking, when they have finished and what to do if they interrupt the assistant while it is still talking.",
+        about: [
+          "Runs voice activity detection to separate speech from background noise.",
+          "Supports barge-in so assistant playback stops immediately when the user starts talking.",
+          "Applies hangover timing so the system does not cut users off too early.",
+          "Can suppress assistant audio from being re-captured by the microphone path.",
+          "Defines turn-finalization rules so downstream reasoning only runs when the system has enough signal."
+        ],
+        design: [
+          "This is a core voice-native component. Without it, even a strong model feels clumsy.",
+          "For translation systems, it helps prevent assistant playback from feeding back into the transcript path."
+        ]
+      },
+
+      stt: {
+        color: "var(--cyan)",
+        title: "Streaming STT",
+        type: "Layer 01 · Live Path",
+        latency: "< 200ms",
+        latency_label: "Time to first partial transcript",
+        plain: "Streaming speech-to-text converts speech into partial text while the person is still speaking. This lets routing and understanding start before the turn is finished.",
+        about: [
+          "Produces partial and final transcripts.",
+          "Can use custom vocabulary for domain-specific terms and names.",
+          "Supports diarization where multi-speaker distinction is needed.",
+          "Feeds early partial text into fast classifiers to buy back latency.",
+          "Should expose confidence scores so the system knows when to clarify instead of guessing."
+        ]
+      },
+
+      session: {
+        color: "var(--cyan)",
+        title: "Session State",
+        type: "Layer 01 · Live Path",
+        plain: "This is the short-lived working memory for the current session. It tracks what has happened so far without forcing the model to reconstruct everything from raw transcript each time.",
+        about: [
+          "Stores recent turns, extracted entities, tool outputs and conversation state.",
+          "Optimized for fast reads and writes during a live session.",
+          "Older turns can be compressed into summaries to preserve context budget.",
+          "Should clearly separate ephemeral session data from long-lived audit records.",
+          "Can replicate selectively if cross-region continuity is required."
+        ]
+      },
+
+      injection: {
+        color: "var(--red)",
+        title: "Prompt Injection Filter",
+        type: "Layer 02 · Security Boundary",
+        latency: "< 5ms",
+        latency_label: "Deterministic screen before any model call",
+        plain: "This is the first low-cost security filter. It looks for known jailbreak and instruction-overwrite patterns before any expensive model sees the input.",
+        about: [
+          "Blocks common attack phrases and instruction reversal attempts.",
+          "Runs before model execution, so blocked inputs cost almost nothing.",
+          "Can use normalized text to catch spacing, casing and unicode tricks.",
+          "Produces security events that can be reviewed later.",
+          "Works best as the first layer, not the only layer."
+        ]
+      },
+
+      semantic_guard: {
+        color: "var(--red)",
+        title: "Semantic Guard",
+        type: "Layer 02 · Security Boundary",
+        latency: "< 40ms",
+        latency_label: "Meaning-based risk screen",
+        plain: "This second security layer looks beyond exact words. It catches attack intent expressed in new wording that a phrase-based filter would miss.",
+        about: [
+          "Uses embeddings or a lightweight classifier to compare meaning, not exact text.",
+          "Helps catch disguised jailbreak attempts and unsafe intent framing.",
+          "Should be tuned carefully to avoid blocking normal multilingual or complex user input.",
+          "Best used with thresholds and review feedback loops.",
+          "Runs in parallel with other low-latency prechecks where possible."
+        ]
+      },
+
+      pii: {
+        color: "var(--red)",
+        title: "PII Protection",
+        type: "Layer 02 · Security Boundary",
+        latency: "< 8ms",
+        latency_label: "Redaction/tokenization budget",
+        plain: "This layer protects sensitive personal information before it reaches logs, analytics pipelines or long-term storage systems.",
+        about: [
+          "Can redact or tokenize names, phone numbers, IDs, email addresses and payment-related fields.",
+          "Should run before any durable write occurs.",
+          "Can preserve reversibility for authorised downstream systems by tokenization rather than plain redaction.",
+          "Supports data minimization instead of storing raw sensitive text everywhere.",
+          "Makes operational review safer without needing full raw transcripts."
+        ]
+      },
+
+      rate_limit: {
+        color: "var(--red)",
+        title: "Abuse & Rate Control",
+        type: "Layer 02 · Security Boundary",
+        plain: "This protects system availability and cost by preventing users or automated actors from sending too many turns too quickly.",
+        about: [
+          "Uses per-session, per-identity or per-IP thresholds depending on product type.",
+          "Can detect unnatural turn velocity and repeated abuse patterns.",
+          "Protects downstream models from wasteful load and vendor spend spikes.",
+          "Should distinguish abuse from legitimate high-volume enterprise traffic.",
+          "Works best with graduated responses such as slowdowns, warnings and short temporary blocks."
+        ]
+      },
+
+      service_auth: {
+        color: "var(--red)",
+        title: "Service Identity",
+        type: "Layer 02 · Security Boundary",
+        plain: "Internal services should authenticate to each other just as seriously as external users do. This reduces lateral movement risk if one service is compromised.",
+        about: [
+          "Uses mutual TLS and short-lived service credentials.",
+          "Prevents internal network location from being treated as trust.",
+          "Supports credential rotation and narrow service-to-service permissions.",
+          "Makes audit and incident review much cleaner.",
+          "Closes a common gap in fast-moving AI systems that only secure the outer edge."
+        ]
+      },
+
+      policy_engine: {
+        color: "var(--red)",
+        title: "Policy Engine",
+        type: "Layer 02 · Security Boundary",
+        plain: "This applies runtime rules that vary by tenant, region, domain or operational mode. It is where business rules become enforced behavior.",
+        about: [
+          "Can block certain tools or response modes for specific tenants.",
+          "Can route sessions differently based on geography or regulatory mode.",
+          "Supports allow-lists, deny-lists and conditional actions.",
+          "Should be versioned and auditable like application code.",
+          "Keeps rules explicit instead of scattering them invisibly across prompts and handlers."
+        ]
+      },
+
+      regex_class: {
+        color: "var(--yellow)",
+        title: "Fast Intent Match",
+        type: "Layer 03 · Fast Path",
+        latency: "< 15ms",
+        latency_label: "Deterministic classification budget",
+        plain: "This handles the obvious cases cheaply and quickly. The point is not to be clever. The point is to avoid spending model time where clear rules are enough.",
+        about: [
+          "Works well for greetings, confirmations, repeated FAQs and narrow command phrases.",
+          "Can attach extracted entities directly from matched patterns.",
+          "Helps reduce cost and latency on a large share of turns.",
+          "Should remain deliberately small and controlled to avoid becoming a brittle maze.",
+          "Borderline matches should escalate cleanly to stronger classification."
+        ]
+      },
+
+      sentiment: {
+        color: "var(--yellow)",
+        title: "Sentiment & Distress Signals",
+        type: "Layer 03 · Fast Path",
+        latency: "< 20ms",
+        latency_label: "Realtime emotion signal budget",
+        plain: "Voice systems need to know not only what the user said, but how the interaction is trending. This layer tracks frustration, distress and escalation risk over time.",
+        about: [
+          "Uses rolling turn-level signals rather than overreacting to a single message.",
+          "Can detect anger, confusion, urgency or emotional distress cues.",
+          "Feeds escalation decisions and response tone adjustment.",
+          "Should prioritise safety over polish in high-risk cases.",
+          "Is most effective when combined with explicit escalation rules."
+        ]
+      },
+
+      intent_model: {
+        color: "var(--purple)",
+        title: "Intent Model",
+        type: "Layer 03 · Deep Path",
+        latency: "< 120ms",
+        latency_label: "Structured classification model budget",
+        plain: "When rules are not enough, this model determines what the user is actually trying to do and how confident the system should be in that interpretation.",
+        about: [
+          "Outputs intent, confidence and optionally secondary intents.",
+          "Can support multi-label or hierarchical intent sets.",
+          "Should be retrained or recalibrated as live usage patterns evolve.",
+          "Low-confidence results should trigger clarification instead of overconfident action.",
+          "Works best when tuned to the product domain rather than kept completely generic."
+        ]
+      },
+
+      complexity: {
+        color: "var(--purple)",
+        title: "Complexity Router",
+        type: "Layer 03 · Deep Path",
+        plain: "This is the main decision point for the turn. It decides whether the system should stay cheap and fast, bring in tools and retrieval or step out and hand over to a human.",
+        about: [
+          "Separates trivial turns from context-heavy or high-risk ones.",
+          "Can use confidence, budget, regulatory mode and user sentiment as routing inputs.",
+          "Prevents every turn from falling into the heaviest possible execution path.",
+          "Should log why the route was chosen for future review.",
+          "Is one of the highest-leverage control points in the entire architecture."
+        ]
+      },
+
+      domain_adapter: {
+        color: "var(--pink)",
+        title: "Domain Adapter",
+        type: "Layer 04 · Context Assembly",
+        plain: "This is where generic AI becomes domain-aware. It injects the business context the model needs so the model can reason with facts instead of guessing.",
+        about: [
+          "Builds the per-turn context from tenant rules, session state and domain configuration.",
+          "Lets one core architecture serve multiple industries without retraining everything.",
+          "Improves precision by supplying the right local facts early.",
+          "Can activate different tool sets or personas per tenant.",
+          "Should remain structured and inspectable rather than becoming a hidden prompt blob."
+        ]
+      },
+
+      entity_enricher: {
+        color: "var(--pink)",
+        title: "Entity Enricher",
+        type: "Layer 04 · Context Assembly",
+        plain: "This identifies important domain-specific references in the turn and links them to the correct underlying records before the system tries retrieval or action.",
+        about: [
+          "Maps names, booking references, products, locations or customer IDs to known objects.",
+          "Improves retrieval precision by grounding the query with real entities.",
+          "Supports fuzzy matching where spoken input is imperfect.",
+          "Can carry multilingual aliases for the same real-world concept.",
+          "Reduces hallucination because the system is no longer guessing what the user meant."
+        ]
+      },
+
+      persona_config: {
+        color: "var(--pink)",
+        title: "Persona & Language Config",
+        type: "Layer 04 · Context Assembly",
+        plain: "This sets how the assistant should sound and behave for a given tenant or context. It keeps the experience consistent without changing the underlying architecture.",
+        about: [
+          "Controls tone, response style, supported languages and persona naming.",
+          "Can switch to a stricter scripted mode for sensitive flows.",
+          "Supports tenant-specific voice and brand alignment.",
+          "Should be versioned so historical sessions can be understood properly.",
+          "Lets the runtime adapt without mixing presentation concerns into core logic."
+        ]
+      },
+
+      tool_plan: {
+        color: "var(--pink)",
+        title: "Tool Plan Builder",
+        type: "Layer 04 · Context Assembly",
+        plain: "Before the model begins heavy execution, this layer decides which tools are actually needed. That keeps the system faster, safer and cheaper.",
+        about: [
+          "Chooses the minimum viable tool path for the current turn.",
+          "Can forbid unnecessary retrieval or writes when a direct answer is enough.",
+          "Improves latency by reducing pointless tool branching.",
+          "Makes orchestration more predictable and auditable.",
+          "Pairs well with cost governance and write guards."
+        ]
+      },
+
+      fast_llm: {
+        color: "var(--blue)",
+        title: "Fast LLM",
+        type: "Layer 05 · Response Execution",
+        latency: "< 400ms",
+        latency_label: "Simple-path model budget",
+        plain: "This is the smaller, cheaper model used for short and straightforward turns where speed matters more than deep reasoning.",
+        about: [
+          "Useful for concise answers, confirmations and simple guided steps.",
+          "Should run with tight output limits to stay fast and focused.",
+          "Supports streaming so TTS can begin early.",
+          "Saves cost by handling turns that do not justify premium model use.",
+          "Works best when the router keeps it in a narrow lane."
+        ]
+      },
+
+      primary_llm: {
+        color: "var(--blue)",
+        title: "Primary LLM",
+        type: "Layer 05 · Response Execution",
+        latency: "< 1.5s",
+        latency_label: "Complex-path reasoning budget",
+        plain: "This is the heavier reasoning model used when the turn needs tool use, retrieval, nuanced explanation or more careful multi-step reasoning.",
+        about: [
+          "Handles complex, ambiguous or context-heavy turns.",
+          "Can consume retrieved context and structured tool outputs.",
+          "Should stream early tokens whenever possible to reduce perceived delay.",
+          "Needs strong budget and guardrail control because it is the most expensive path.",
+          "Is most effective when upstream context assembly is already good."
+        ]
+      },
+
+      tool_runtime: {
+        color: "var(--blue)",
+        title: "Tool Runtime",
+        type: "Layer 05 · Response Execution",
+        plain: "This is the execution environment for approved tools. It sits between model intent and real system action, turning proposed operations into controlled calls.",
+        about: [
+          "Executes only approved tool invocations, not arbitrary model wishes.",
+          "Handles retries, timeouts and structured errors.",
+          "Returns predictable outputs so the model can reason over results safely.",
+          "Should keep a clear boundary between read operations and write operations.",
+          "Allows the orchestrator to remain high-level while the runtime stays operationally disciplined."
+        ]
+      },
+
+      tts: {
+        color: "var(--blue)",
+        title: "Streaming TTS",
+        type: "Layer 05 · Response Execution",
+        latency: "< 180ms",
+        latency_label: "Time to first audio output",
+        plain: "This turns response text back into audio and begins playback early so the system feels alive instead of making the user wait for a full sentence to finish rendering.",
+        about: [
+          "Streams audio in chunks so playback can start quickly.",
+          "Needs strong interruption handling so it stops immediately when the user speaks.",
+          "Can support tenant-specific voice configuration.",
+          "Should degrade gracefully to simpler voices if premium providers fail.",
+          "Great TTS matters because users judge responsiveness by ear, not by backend logs."
+        ]
+      },
+
+      cost_gov: {
+        color: "var(--blue)",
+        title: "Cost Governor",
+        type: "Layer 05 · Response Execution",
+        plain: "This watches spend in real time so the system remains commercially viable. Strong voice AI systems are not just accurate. They are economically controlled.",
+        about: [
+          "Tracks estimated spend by session, tenant, model and path.",
+          "Can enforce soft or hard budgets depending on business rules.",
+          "Supports downgrade logic when cheaper execution is still safe.",
+          "Makes cost visible instead of surprising operators at the end of the month.",
+          "Pairs naturally with routing and feature-flag decisions."
+        ],
+        design: [
+          "Budget enforcement should avoid cutting the user off mid-turn whenever possible.",
+          "The best systems expose cost per intent type so optimisation becomes obvious."
+        ]
+      },
+
+      prompt_mgr: {
+        color: "var(--teal)",
+        title: "Prompt Manager",
+        type: "Layer 06 · Control Plane",
+        plain: "This versions the instructions that shape model behavior and allows them to be changed safely without rewriting core code every time.",
+        about: [
+          "Supports versioned prompts with rollback.",
+          "Can inject common safety rules and domain templates consistently.",
+          "Helps separate runtime logic from prompt content management.",
+          "Makes experimentation possible without creating prompt sprawl.",
+          "Should record which prompt version ran for each session."
+        ]
+      },
+
+      tenant_config: {
+        color: "var(--teal)",
+        title: "Tenant Config",
+        type: "Layer 06 · Control Plane",
+        plain: "This stores the customer-specific rules that define how one deployment differs from another. It is essential if the platform is meant to support multiple clients cleanly.",
+        about: [
+          "Holds language preferences, personas, model preferences and tool permissions.",
+          "Can define region routing or regulated-mode rules per tenant.",
+          "Makes onboarding new customers much faster.",
+          "Prevents hardcoded customer logic from leaking into the main runtime.",
+          "Should be strongly validated and easy to audit."
+        ]
+      },
+
+      feature_flags: {
+        color: "var(--teal)",
+        title: "Feature Flags & Rollouts",
+        type: "Layer 06 · Control Plane",
+        plain: "This lets new behavior be released gradually. That matters because architecture maturity is not just about building features, but about changing them safely.",
+        about: [
+          "Supports dark launches, canaries and percentage rollouts.",
+          "Allows testing new prompts, tools or models on limited traffic.",
+          "Reduces blast radius when something new misbehaves.",
+          "Works well with tenant-level experimentation.",
+          "Should integrate with observability so rollouts can be judged quickly."
+        ]
+      },
+
+      model_registry: {
+        color: "var(--teal)",
+        title: "Model Registry",
+        type: "Layer 06 · Control Plane",
+        plain: "This keeps track of which models are approved, what they cost, how they should be routed and which versions are safe for production use.",
+        about: [
+          "Tracks supported models, version history and pricing assumptions.",
+          "Prevents ad hoc model changes from creeping into the runtime.",
+          "Makes routing decisions more explicit and maintainable.",
+          "Helps with incident response when provider behavior changes.",
+          "Supports governance instead of one-off operator memory."
+        ]
+      },
+
+      rag_agent: {
+        color: "var(--teal)",
+        title: "RAG Orchestrator",
+        type: "Layer 07 · Knowledge Retrieval",
+        latency: "< 400ms",
+        latency_label: "Target retrieval budget",
+        plain: "This coordinates the retrieval pipeline so the model gets only the most relevant context instead of a dump of vaguely related documents.",
+        about: [
+          "Can rewrite the query from spoken language into retrieval-friendly language.",
+          "Runs multiple retrieval strategies and reranks the outputs.",
+          "Assembles a compact evidence pack for the reasoning model.",
+          "Should enforce a hard time budget because silence is costly in voice systems.",
+          "Works best when cached aggressively for repetitive high-frequency questions."
+        ]
+      },
+
+      pinecone: {
+        color: "var(--teal)",
+        title: "Vector Search",
+        type: "Layer 07 · Knowledge Retrieval",
+        latency: "< 80ms",
+        latency_label: "Dense retrieval budget",
+        plain: "Vector search finds information by similarity of meaning rather than exact wording. It is useful when users ask naturally rather than using the exact language of the documents.",
+        about: [
+          "Stores embedded document chunks for semantic retrieval.",
+          "Supports namespace separation for multi-tenant isolation.",
+          "Can filter by metadata such as source type or date.",
+          "Works well for fuzzy natural-language lookup.",
+          "Needs reranking or context assembly discipline so relevant results stay concise."
+        ]
+      },
+
+      neo4j: {
+        color: "var(--teal)",
+        title: "Graph Retrieval",
+        type: "Layer 07 · Knowledge Retrieval",
+        latency: "< 120ms",
+        latency_label: "Graph traversal budget",
+        plain: "Graph retrieval is useful when what matters is not just document similarity, but the relationship between facts, entities, versions and rules.",
+        about: [
+          "Models relationships such as supersedes, requires, depends_on and linked_to.",
+          "Can traverse from a known entity to the policies or facts that matter most.",
+          "Brings more structure than flat document retrieval alone.",
+          "Is particularly strong for products, workflows and policy-heavy domains.",
+          "Should keep traversal bounded so context does not explode."
+        ],
+        code: `MATCH (e:Entity {id: $entityId})-[r*1..3]-(related)
+RETURN e, r, related
+
+# Example idea:
+# Booking -> Tour -> Language Options -> Guide Policy -> Accessibility Rule`
+      },
+
+      crm_agent: {
+        color: "var(--green)",
+        title: "Business System Adapter",
+        type: "Layer 07 · System Actions",
+        latency: "< 800ms",
+        latency_label: "Round-trip business-system call budget",
+        plain: "This is the bridge between conversational intelligence and real operational systems such as CRM, ticketing or booking data.",
+        about: [
+          "Can read account, booking or case information on demand.",
+          "Can prepare structured mutations for the write guard to approve.",
+          "Should use adapters so the orchestration layer stays system-agnostic.",
+          "Needs strong identity and permission boundaries before returning sensitive data.",
+          "Turns the platform from a talking assistant into business infrastructure."
+        ]
+      },
+
+      crm_tools: {
+        color: "var(--green)",
+        title: "Tool Registry",
+        type: "Layer 07 · System Actions",
+        plain: "This defines what the system is actually allowed to do. Good tool registries turn vague model intention into narrow, inspectable capabilities.",
+        about: [
+          "Lists approved read and write actions with clear schemas.",
+          "Makes tool use predictable and testable.",
+          "Supports dry-run or preview mode for safer change handling.",
+          "Improves reliability because every tool has expected inputs and outputs.",
+          "Prevents tool sprawl from becoming invisible operational risk."
+        ]
+      },
+
+      crm_guard: {
+        color: "var(--green)",
+        title: "Write Guard",
+        type: "Layer 07 · System Actions",
+        plain: "This is the final safety layer before any real mutation. It is where the system asks: should this change actually be allowed?",
+        about: [
+          "Can require confirmation for high-impact changes.",
+          "Supports allow-listed fields and restricted mutation scopes.",
+          "Can enforce tenant- and user-level permissions.",
+          "Keeps rollback information for recovery from bad writes.",
+          "Helps preserve trust because the model does not get unchecked write access."
+        ]
+      },
+
+      escalation: {
+        color: "var(--orange)",
+        title: "Escalation Engine",
+        type: "Layer 07 · Human Safety Net",
+        plain: "This decides when the system should stop trying to handle the interaction alone. Mature systems escalate early enough to protect trust, not only after obvious failure.",
+        about: [
+          "Can trigger on frustration, repeated failure, ambiguity, regulated topics or explicit user request.",
+          "Should honour direct human requests immediately.",
+          "Can use both hard rules and softer trend signals from sentiment tracking.",
+          "Improves safety and trust more than endless low-quality retries do.",
+          "Should log why the handoff happened so the decision can be reviewed later."
+        ]
+      },
+
+      human_handoff: {
+        color: "var(--orange)",
+        title: "Warm Human Handoff",
+        type: "Layer 07 · Human Safety Net",
+        plain: "The point of handoff is not simply to transfer the user. It is to transfer the user with context, so the conversation keeps moving instead of starting over.",
+        about: [
+          "Passes summary, recent transcript, detected entities and prior actions.",
+          "Can preserve urgency or sentiment information for the receiving human.",
+          "Should minimise silence during the transition.",
+          "Can support scheduled callback where live human capacity is unavailable.",
+          "Turns escalation into continuity rather than perceived failure."
+        ]
+      },
+
+      compliance_check: {
+        color: "var(--orange)",
+        title: "Regulated Flow Handler",
+        type: "Layer 07 · Human Safety Net",
+        plain: "This applies stricter runtime behavior when the conversation enters a sensitive or regulated area. It does not magically make the whole system compliant by itself, but it helps enforce the correct mode of operation.",
+        about: [
+          "Can restrict tools, tighten scripts and force stronger confirmation behavior.",
+          "Can switch input handling for sensitive fields such as payment details.",
+          "Supports region- or domain-specific policy activation.",
+          "Should be backed by real operational controls, not just labels in a diagram.",
+          "Exists to reduce risk when the conversation crosses into higher-stakes territory."
+        ]
+      },
+
+      circuit_breaker: {
+        color: "var(--yellow)",
+        title: "Circuit Breakers",
+        type: "Layer 08 · Reliability",
+        plain: "These stop a failing dependency from dragging the whole runtime down. Instead of waiting endlessly on a bad vendor call, the system trips, routes around the problem and recovers deliberately.",
+        about: [
+          "Monitors errors and latency for external dependencies.",
+          "Trips when a dependency becomes unhealthy beyond a threshold.",
+          "Routes to fallback providers or degraded modes while open.",
+          "Tests recovery carefully before restoring normal traffic.",
+          "Is one of the clearest signs of production maturity in realtime systems."
+        ]
+      },
+
+      trace: {
+        color: "var(--yellow)",
+        title: "Distributed Tracing",
+        type: "Layer 08 · Observability",
+        plain: "Tracing lets operators follow one turn across the full system and see where time was actually spent. Without it, debugging realtime latency becomes guesswork.",
+        about: [
+          "Attaches a trace identity across services and external calls.",
+          "Shows time spent in STT, routing, tools, model execution and TTS.",
+          "Makes bottlenecks visually obvious.",
+          "Helps connect user complaints to specific runtime behavior.",
+          "Works best when paired with structured events and latency SLOs."
+        ]
+      },
+
+      slo_alerts: {
+        color: "var(--yellow)",
+        title: "SLO Monitoring",
+        type: "Layer 08 · Observability",
+        plain: "This defines what acceptable performance and reliability actually mean. Good systems do not just log data. They commit to targets and alert when those targets are missed.",
+        about: [
+          "Tracks latency and error targets for the most important runtime paths.",
+          "Supports error budgets so teams know how much instability is acceptable.",
+          "Can escalate alerts by severity rather than waking people for every small blip.",
+          "Turns reliability into a managed discipline instead of a vague aspiration.",
+          "Should be visible to both engineering and operations."
+        ]
+      },
+
+      audit_log: {
+        color: "var(--yellow)",
+        title: "Audit Trail",
+        type: "Layer 08 · Observability",
+        plain: "This keeps the durable operational record of what the system said, did and decided. It matters for incident review, customer trust and regulated environments.",
+        about: [
+          "Captures prompts, responses, tool invocations and key system decisions.",
+          "Should be durable and resistant to silent tampering.",
+          "Needs careful handling of sensitive data so logs remain useful without being reckless.",
+          "Supports incident forensics and customer dispute resolution.",
+          "Should be searchable enough to answer real operational questions quickly."
+        ]
+      },
+
+      eval: {
+        color: "var(--yellow)",
+        title: "Eval Pipeline",
+        type: "Layer 08 · Continuous Verification",
+        plain: "This is the system that checks whether quality is drifting over time. It evaluates sampled calls outside the live path so operators can improve the system without slowing users down.",
+        about: [
+          "Scores factual quality, task success, policy adherence and tone.",
+          "Can add voice-specific criteria such as interruption handling and turn smoothness.",
+          "Runs asynchronously so live sessions do not wait on evaluation.",
+          "Should compare current behavior against rolling baselines.",
+          "Turns quality from a feeling into an observable trend."
+        ]
+      },
+
+      synthetic_monitor: {
+        color: "var(--purple)",
+        title: "Synthetic Calls",
+        type: "Layer 08 · Continuous Verification",
+        plain: "Synthetic calls are scheduled end-to-end tests that exercise the runtime as if a real user were speaking. They are one of the best ways to catch breakage before customers feel it.",
+        about: [
+          "Can cover common intents, edge cases and sensitive flows.",
+          "Should verify both accuracy and latency expectations.",
+          "Are especially useful after vendor or prompt changes.",
+          "Can run per region to test routing and failover assumptions.",
+          "Give fast feedback without waiting for production complaints."
+        ]
+      },
+
+      chaos_testing: {
+        color: "var(--purple)",
+        title: "Chaos Testing",
+        type: "Layer 08 · Continuous Verification",
+        plain: "This deliberately breaks selected parts of the system in a controlled way to prove that fallbacks and recovery plans actually work.",
+        about: [
+          "Can inject latency, errors, unavailable vendors or corrupt tool responses.",
+          "Builds confidence that resilience paths are real, not theoretical.",
+          "Should begin in staging and expand carefully into controlled production slices.",
+          "Feeds operational lessons back into incident runbooks.",
+          "Separates mature systems from architectures that only look resilient on slides."
+        ]
+      },
+
+      multiregion: {
+        color: "var(--blue)",
+        title: "Multi-Region Failover",
+        type: "Layer 08 · Reliability",
+        plain: "This reduces blast radius by ensuring a regional issue does not take out the whole service. It matters more as the product becomes customer-critical.",
+        about: [
+          "Can route traffic between at least two regions.",
+          "Supports resilience against cloud, network or edge disruptions.",
+          "Needs careful thought around state replication and regional dependencies.",
+          "Should define clear recovery objectives rather than vague ambitions.",
+          "Becomes especially valuable for enterprise-grade deployments."
+        ]
+      },
+
+      data_residency: {
+        color: "var(--blue)",
+        title: "Data Residency Routing",
+        type: "Layer 08 · Reliability",
+        plain: "This ensures storage and processing happen in the right region when customers or policy requirements demand it. It is about operational control, not just legal labels.",
+        about: [
+          "Routes session processing and storage according to regional requirements.",
+          "Can support tenant-specific residency commitments.",
+          "Needs clear separation between transient routing and durable storage location.",
+          "Should log regional decisions so they can be audited later.",
+          "Becomes more important as enterprise and public-sector use increases."
+        ]
+      }
+    };
+
+    function showDetail(nodeId) {
+      const d = details[nodeId];
+      if (!d) return;
+
+      document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+      const clicked = document.querySelector(`[data-node="${nodeId}"]`);
+      if (clicked) clicked.classList.add("active");
+
+      const panel = document.getElementById("detail-panel");
+      const content = document.getElementById("detail-content");
+
+      let html = `<div class="detail-type" style="color:${d.color}">${d.type}</div>`;
+      html += `<h2>${d.title}</h2>`;
+
+      if (d.type && d.type.includes("P0")) {
+        html += `<div class="gap-badge p0">P0 · Critical Runtime Area</div>`;
+      } else if (d.type && d.type.includes("P1")) {
+        html += `<div class="gap-badge p1">P1 · Next Operational Layer</div>`;
+      }
+
+      if (d.latency) {
+        html += `<div class="detail-latency"><span>${d.latency}</span>${d.latency_label || ""}</div>`;
+      }
+
+      if (d.plain) {
+        html += `<div class="detail-plain">${d.plain}</div>`;
+      }
+
+      if (d.about) {
+        html += `<div class="detail-section"><h3>How it works</h3>`;
+        d.about.forEach(item => {
+          html += `<div class="detail-item">${item}</div>`;
+        });
+        html += `</div>`;
+      }
+
+      if (d.design) {
+        html += `<div class="detail-section"><h3>Design decisions</h3>`;
+        d.design.forEach(item => {
+          html += `<div class="detail-item">${item}</div>`;
+        });
+        html += `</div>`;
+      }
+
+      if (d.code) {
+        const safeCode = d.code
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        html += `<div class="detail-section"><h3>Example</h3><div class="code-block">${safeCode}</div></div>`;
+      }
+
+      panel.style.setProperty("--detail-color", d.color);
+      content.innerHTML = html;
+      panel.classList.add("open");
+    }
+
+    function closeDetail() {
+      document.getElementById("detail-panel").classList.remove("open");
+      document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+    }
+
+    document.querySelectorAll(".card[data-node]").forEach(card => {
+      card.addEventListener("click", () => showDetail(card.dataset.node));
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") closeDetail();
+    });
+  </script>
+</body>
+</html>
